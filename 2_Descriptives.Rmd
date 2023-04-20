@@ -1,0 +1,98 @@
+---
+title: "FINDEM descriptives"
+author: "S Ramondt & A Meulenbeld"
+date: "23-3-2022"
+output: html_document
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+pacman::p_load(
+  rio,          # File import
+  here,         # File locator
+  haven,
+  dplyr,
+  furniture,
+  sjlabelled,
+  sjPlot,
+  tidyverse,    # data management + ggplot2 graphics 
+  )
+```
+
+```{r Read-in data, include=FALSE}
+setwd("C:/Users/meule01a/OneDrive - Sanquin/A3 Project FINDEM (OD)")
+data_clean <- read_sav("findem_clean.sav") #using my project folder structure, adapt to yours.
+
+```
+
+```{r data prep}
+#gender: 1 = male, 2 = female
+data_clean$Gender <- as.character(data_clean$Gender)
+data_clean$Gender[data_clean$Gender==1]<-"Male"
+data_clean$Gender[data_clean$Gender==2 & data_clean$Age < 45]<-"Pre menopause"
+data_clean$Gender[data_clean$Gender==2 & data_clean$Age >= 45]<-"Post menopause"
+```
+
+```{r, echo=T}
+summary <- data_clean %>%
+  group_by(Intervention_months,Gender)%>%
+  summarise(count = n(),
+            Hb = mean(Hb, na.rm = T), 
+            #medHb = median(Hb, na.rm=T), not working, i get the mean??
+            Ferritin = mean(Ferritin, na.rm=T)
+            #, medFerr = median(Ferritin, na.rm=T), same here? 
+            )
+
+```
+
+```{r make table}
+colnames <- c("Time after intervention", "N", "Mean Hb", "Mean ferritin")
+
+currentDate <- format(Sys.time(), "%Y-%m-%d")
+FolderName <- paste("HTML tables/", currentDate,sep="")
+dir.create(FolderName)
+
+FileName <- paste("HTML tables/", currentDate, "/descriptives_males.html",sep="")
+
+tab_df(summary[summary$Gender=="Male",c(1,3:5)],col.header=colnames,title = "Descriptives for males per measurement point", file=FileName)
+
+FileName <- paste("HTML tables/", currentDate, "/descriptives_premfemales.html",sep="")
+
+tab_df(summary[summary$Gender=="Pre menopause",c(1,3:5)],col.header=colnames,title = "Descriptives for pre-menopausal females per measurement point", file=FileName)
+
+FileName <- paste("HTML tables/", currentDate, "/descriptives_postmfemales.html",sep="")
+
+tab_df(summary[summary$Gender=="Post menopause",c(1,3:5)],col.header=colnames,title = "Descriptives for post-menopausal females per measurement point", file=FileName)
+```
+
+```{r ferritingood}
+summary2 <- data_clean %>%
+  group_by(Intervention_months,Gender,Ferritingood)%>%
+  summarise(count = n())%>%
+  drop_na
+
+df <- cbind(unique(summary2$Intervention_months),summary2$count[summary2$Gender=="Male"&summary2$Ferritingood==0],summary2$count[summary2$Gender=="Male"&summary2$Ferritingood==1],summary2$count[summary2$Gender=="Pre menopause"&summary2$Ferritingood==0],summary2$count[summary2$Gender=="Pre menopause"&summary2$Ferritingood==1],summary2$count[summary2$Gender=="Post menopause"&summary2$Ferritingood==0],summary2$count[summary2$Gender=="Post menopause"&summary2$Ferritingood==1])
+df <- data.frame(df)
+
+colnames <-c("Months since intervention", "males 0", "males 1" , "pre-m females 0", "pre-m females 1", "post-m females 0", "post-m females 1")
+
+FileName <- paste("HTML tables/", currentDate, "/descriptives_ferritingood.html",sep="")
+
+tab_df(df,col.header=colnames,title = "Count for good ferritin per timepoint", file=FileName)
+```
+
+```{r Hbgood}
+summary3 <- data_clean %>%
+  group_by(Intervention_months,Gender,Hbgood)%>%
+  summarise(count = n())%>%
+  drop_na
+
+df2 <- cbind(unique(summary3$Intervention_months),summary3$count[summary3$Gender=="Male"&summary3$Hbgood==0],summary3$count[summary3$Gender=="Male"&summary3$Hbgood==1],summary3$count[summary3$Gender=="Pre menopause"&summary3$Hbgood==0],summary3$count[summary3$Gender=="Pre menopause"&summary3$Hbgood==1],summary3$count[summary3$Gender=="Post menopause"&summary3$Hbgood==0],summary3$count[summary3$Gender=="Post menopause"&summary3$Hbgood==1])
+df2 <- data.frame(df2)
+
+colnames <-c("Months since intervention", "males 0", "males 1" , "pre-m females 0", "pre-m females 1", "post-m females 0", "post-m females 1")
+
+FileName <- paste("HTML tables/", currentDate, "/descriptives_hbgood.html",sep="")
+
+tab_df(df2,col.header=colnames,title = "Count for good hb per timepoint", file=FileName)
+```
