@@ -40,15 +40,17 @@ glimpse(data_raw)
 data_raw$HbGoedgekeurd %>% attr('labels')
 
 # select
-data_raw2 <- data_raw %>% select(KeyID, Hb, HbGoedgekeurd, Ferritine_FINDEM, stap, Meetweek, cluster, Geslacht, Gewicht, Lengte, LeeftijdBijDOnatie)
+data_raw2 <- data_raw %>% select(KeyID, Hb, HbGoedgekeurd, Ferritine_FINDEM, stap, Meetweek, cluster, Geslacht, Gewicht, Lengte, LeeftijdBijDOnatie, ReturnOpTijd)
 
 glimpse(data_raw2)
 ```
-**Note 30-03-2022 (A):** I added the variable Intervention_months2 that we can use to add months 1 and 5 to the control group, then I added another variable Intervention_months_factor that has the 6 month groups
+
+**Note 30-03-2022 (A):** I added the variable Intervention_months2 that we can use to add months 1 and 5 to the control group, then I added another variable Intervention_months_factor that has the 6 month groups 
 
 ```{r Recode 1: Factorize, echo=TRUE, rename, and intervention, include=FALSE}
 data_clean <- data_raw2 %>% 
-  mutate(Hbgood = factor(case_when(HbGoedgekeurd == 0 ~ 0, HbGoedgekeurd == 1 ~ 1))) %>% 
+  mutate(HbDef = factor(case_when(HbGoedgekeurd == 0 ~ 1, HbGoedgekeurd == 1 ~ 0))) %>% 
+  mutate(Return = factor(case_when(ReturnOpTijd == 0 ~ 0, ReturnOpTijd == 1 ~ 1))) %>% 
   mutate(Gender = factor(Geslacht) %>% fct_recode("Male" = "Man", "Female" = "Vrouw")) %>% 
   mutate(Timepoint = case_when(Meetweek == 0 ~ as.Date('2017-11-01'), Meetweek == 1 ~ as.Date('2019-03-01'), TRUE ~ as.Date('2019-11-01'))) %>% 
   mutate(Step = case_when(stap == 1.0 ~ as.Date('2017-11-01'), stap == 2.1 ~ as.Date('2018-05-01'), stap == 2.2~ as.Date('2018-10-01'), 
@@ -56,7 +58,7 @@ data_clean <- data_raw2 %>%
   mutate(Intervention_months = interval(Step, Timepoint) %/% months(1)) %>% mutate(Intervention_months =  if_else(Intervention_months < 0, 0, Intervention_months)) %>% 
   mutate(Intervention = factor(case_when(Intervention_months == 0 ~ 0, TRUE & !is.na(Intervention_months)~ 1))) %>% # just the way I created this shows how useless it is :)
   mutate(PostMeno = factor(case_when(Gender == "Female" & LeeftijdBijDOnatie < 45 ~ 0, Gender== "Female" & LeeftijdBijDOnatie >= 45 ~ 1))) %>%
-  rename(Ferritin = Ferritine_FINDEM, Age = LeeftijdBijDOnatie, Cluster = cluster, Weight = Gewicht, Height = Lengte)  %>% mutate(Ferritingood = factor(case_when(Ferritin > 15 ~ 1, Ferritin < 15 ~ 0)))%>% select(-HbGoedgekeurd, -Geslacht)%>%
+  rename(Ferritin = Ferritine_FINDEM, Age = LeeftijdBijDOnatie, Cluster = cluster, Weight = Gewicht, Height = Lengte)  %>% mutate(IronDef = factor(case_when(Ferritin >= 15 ~ 0, Ferritin < 15 ~ 1)))%>% select(-HbGoedgekeurd, -Geslacht)%>%
   mutate(Intervention_months2 =  if_else(Intervention_months < 6, 0, Intervention_months))%>%
   mutate(Intervention_months_factor = factor(case_when(Intervention_months == 0 ~ 0, Intervention_months == 1 ~ 0, Intervention_months == 5 ~ 0, Intervention_months == 8 ~ 1, Intervention_months == 10 ~ 1,Intervention_months == 13 ~ 2,Intervention_months == 16 ~ 2,Intervention_months == 18 ~ 3,Intervention_months == 24 ~ 4)))
   #mutate(Intervention_months_factor=fct_relevel(Intervention_months_factor, c("0-6 months", "6-12 months", "12-18 months", "18-24 months", "24+ months")))
@@ -180,7 +182,7 @@ data_clean %>%
 load("findem_scale.Rdta")
 ```
 
-**Note 30-03-2022 (A)**: I adjusted the analyses to now use the intervention_months_factor i.e. the 6 month groups
+**Note 30-03-2022 (A)** I adjusted the analyses to now use the intervention_months_factor i.e. the 6 month groups
 
 ```{r hb females}
 hb_fitF <- lm(Hb ~ Age + Weight + Height + Intervention_months, data = data_scale, subset = data_scale$Gender == "Female")
@@ -197,8 +199,8 @@ hb_fitMfactor <- lm(Hb ~ Age + Weight + Height + Intervention_months_factor, dat
 
 ```{r hb deferral females}
 
-hbdef_fitF <- glm(formula = Hbgood ~ Age + Weight + Height + Intervention_months, data = data_scale, subset = data_scale$Gender == "Female" ,family = binomial)
-hbdef_fitFfactor <- update(hbdef_fitF, formula = Hbgood ~ Age + Weight + Height + Intervention_months_factor)
+hbdef_fitF <- glm(formula = HbDef ~ Age + Weight + Height + Intervention_months, data = data_scale, subset = data_scale$Gender == "Female" ,family = binomial)
+hbdef_fitFfactor <- update(hbdef_fitF, formula = HbDef ~ Age + Weight + Height + Intervention_months_factor)
 hbdef_fit_postF_factor <- update(hbdef_fitFfactor, subset = data_scale$Gender == "Female" & data_scale$PostMeno == 1)
 hbdef_fit_preF_factor <- update(hbdef_fitFfactor, subset = data_scale$Gender == "Female" & data_scale$PostMeno == 0)
 ``` 
@@ -206,9 +208,9 @@ hbdef_fit_preF_factor <- update(hbdef_fitFfactor, subset = data_scale$Gender == 
 **Note** Get an error for females because the model couldn't converge, we then scaled variables. After this we decided to use scaled variables in all models.
 
 ```{r hb deferral males}
-hbdef_fitM <- glm(formula = Hbgood ~ Age + Weight + Height + Intervention_months, data = data_scale, subset = data_scale$Gender == "Male" ,family = binomial)
+hbdef_fitM <- glm(formula = HbDef ~ Age + Weight + Height + Intervention_months, data = data_scale, subset = data_scale$Gender == "Male" ,family = binomial)
 
-hbdef_fitMfactor <- update(hbdef_fitM, formula = Hbgood ~ Age + Weight + Height + Intervention_months_factor)
+hbdef_fitMfactor <- update(hbdef_fitM, formula = HbDef ~ Age + Weight + Height + Intervention_months_factor)
 
 ```
 
@@ -236,20 +238,36 @@ ferrlog_fitM <- lm(FerritinLog ~ Age + Weight + Height + Intervention_months, da
 ferrlog_fitMfactor <- update(ferrlog_fitM, formula = FerritinLog ~ Age + Weight + Height + Intervention_months_factor)
 ```
 
-```{r ferritin good females}
-ferrgood_fitF <- glm(formula = Ferritingood ~ Age + Weight + Height + Intervention_months, data = data_scale, subset = data_scale$Gender == "Female",family = binomial)
+```{r iron deficiency females}
+irondef_fitF <- glm(formula = IronDef ~ Age + Weight + Height + Intervention_months, data = data_scale, subset = data_scale$Gender == "Female",family = binomial)
 
-ferrgood_fitFfactor <- update(ferrgood_fitF, formula = Ferritingood ~ Age + Weight + Height + Intervention_months_factor)
-ferrgood_fit_preF_factor <- update(ferrgood_fitF, formula = Ferritingood ~ Age + Weight + Height + Intervention_months_factor, subset = data_scale$Gender == "Female" & data_scale$PostMeno == 0)
-ferrgood_fit_postF_factor <- update(ferrgood_fitF, formula = Ferritingood ~ Age + Weight + Height + Intervention_months_factor, subset = data_scale$Gender == "Female" & data_scale$PostMeno == 1)
+irondef_fitFfactor <- update(irondef_fitF, formula = IronDef ~ Age + Weight + Height + Intervention_months_factor)
+irondef_fit_preF_factor <- update(irondef_fitF, formula = IronDef ~ Age + Weight + Height + Intervention_months_factor, subset = data_scale$Gender == "Female" & data_scale$PostMeno == 0)
+irondef_fit_postF_factor <- update(irondef_fitF, formula = IronDef ~ Age + Weight + Height + Intervention_months_factor, subset = data_scale$Gender == "Female" & data_scale$PostMeno == 1)
 
 ```
 
 ```{r ferritin good males}
-ferrgood_fitM <- glm(formula = Ferritingood ~ Age + Weight + Height + Intervention_months, data = data_scale, subset = data_scale$Gender == "Male",family = binomial)
+irondef_fitM <- glm(formula = IronDef ~ Age + Weight + Height + Intervention_months, data = data_scale, subset = data_scale$Gender == "Male",family = binomial)
 
-ferrgood_fitMfactor <- update(ferrgood_fitF, formula = Ferritingood ~ Age + Weight + Height + Intervention_months_factor)
+irondef_fitMfactor <- update(irondef_fitM, formula = IronDef ~ Age + Weight + Height + Intervention_months_factor)
 
+```
+
+**Note** we still need to add the analysis for the donor return, i'm in doubt whether we need to analyse it using logistic regression or with survival analysis?
+
+```{r donor return females}
+
+return_fitF <- glm(formula = Return ~ Age + Weight + Height + Intervention_months, data = data_scale, subset = data_scale$Gender == "Female" ,family = binomial)
+return_fitFfactor <- update(hbdef_fitF, formula = Return ~ Age + Weight + Height + Intervention_months_factor)
+return_fit_postF_factor <- update(return_fitFfactor, subset = data_scale$Gender == "Female" & data_scale$PostMeno == 1)
+return_fit_preF_factor <- update(return_fitFfactor, subset = data_scale$Gender == "Female" & data_scale$PostMeno == 0)
+```
+
+```{r return males}
+return_fitM <- glm(formula = Return ~ Age + Weight + Height + Intervention_months, data = data_scale, subset = data_scale$Gender == "Male",family = binomial)
+
+return_fitMfactor <- update(return_fitM, formula = Return ~ Age + Weight + Height + Intervention_months_factor)
 ```
 
 **Note** Added a code to have a bit better readable tables, but feel free to remove them
@@ -282,8 +300,12 @@ tab_model(ferr_fit_preF_factor, ferr_fit_postF_factor, ferr_fitMfactor, file = F
 FileName <- paste("HTML tables/", currentDate, "/ferrlog_fit.html",sep="")
 tab_model(ferrlog_fit_preF_factor, ferrlog_fit_postF_factor, ferrlog_fitMfactor, file = FileName, pred.labels = pl, dv.labels = c("Pre-menopausal women", "Post-menopausal women", "Men"), title = "Log transformed ferritin levels", show.reflvl = T)
 
-FileName <- paste("HTML tables/", currentDate, "/ferrgood_fit.html",sep="")
-tab_model(ferrgood_fit_preF_factor, ferrgood_fit_postF_factor, ferrgood_fitMfactor, file = FileName, pred.labels = pl, dv.labels = c("Pre-menopausal women", "Post-menopausal women", "Men"), title = "Ferritin levels above 15", show.reflvl = T)
+FileName <- paste("HTML tables/", currentDate, "/irondef_fit.html",sep="")
+tab_model(irondef_fit_preF_factor, irondef_fit_postF_factor, irondef_fitMfactor, file = FileName, pred.labels = pl, dv.labels = c("Pre-menopausal women", "Post-menopausal women", "Men"), title = "Ferritin levels above 15", show.reflvl = T)
+
+FileName <- paste("HTML tables/", currentDate, "/return_fit.html",sep="")
+tab_model(return_fit_preF_factor, return_fit_postF_factor, return_fitMfactor, file = FileName, pred.labels = pl, dv.labels = c("Pre-menopausal women", "Post-menopausal women", "Men"), title = "Donor return", show.reflvl = T)
+
 
 ```
 
