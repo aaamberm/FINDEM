@@ -25,8 +25,8 @@ library(car)             # assumptions: vif
 
 ```{r Read-in data, include=FALSE}
 setwd("C:/Users/meule01a/OneDrive - Sanquin/A3 Project FINDEM (OD)")
-oud <- read_sav("Donaties_3meetweken_test.sav")
-data_raw <- read_sav("Donaties_4meetweken_plus.sav") #using my project folder structure, adapt to yours.
+oud <- read_sav("C:/Users/meule01a/OneDrive - Sanquin/A3 Project FINDEM (OD)/01 Data/Donaties_3meetweken_test.sav")
+data_raw <- read_sav("C:/Users/meule01a/OneDrive - Sanquin/A3 Project FINDEM (OD)/01 Data/Donaties_4meetweken_plus.sav") #using my project folder structure, adapt to yours.
 
 ```
 
@@ -41,11 +41,11 @@ glimpse(data_raw)
 data_raw$HbGoedgekeurd %>% attr('labels')
 
 # select
-data_raw2 <- data_raw %>% select(KeyID, Hb, HbGoedgekeurd, Ferritine_FINDEM, stap, Meetweek, cluster, Geslacht, Gewicht, Lengte, LeeftijdBijDOnatie, ReturnOpTijd, Return)
+data_raw2 <- data_raw %>% select(KeyID, Hb, HbGoedgekeurd, Ferritine_FINDEM, stap, Meetweek, cluster, Geslacht, Gewicht, Lengte, LeeftijdBijDOnatie, ReturnOpTijd, Return, Donatiedatum)
 
 glimpse(data_raw2)
 ```
-**Note 30-03-2022 (A):** I added the variable Intervention_months2 that we can use to add months 1 and 5 to the control group, then I added another variable Intervention_months_factor that has the 6 month groups
+**Note 30-03-2022 Amber: I added the variable Intervention_months2 that we can use to add months 1 and 5 to the control group, then I added another variable Intervention_months_factor that has the 6 month groups **
 ```{r Recode 1: Factorize, echo=TRUE, rename, and intervention, include=FALSE}
 data_clean <- data_raw2 %>% 
   mutate(HbDef = factor(case_when(HbGoedgekeurd == 0 ~ 1, HbGoedgekeurd == 1 ~ 0))) %>% 
@@ -59,7 +59,8 @@ data_clean <- data_raw2 %>%
   rename(Ferritin = Ferritine_FINDEM, Age = LeeftijdBijDOnatie, Cluster = cluster, Weight = Gewicht, Height = Lengte)  %>% mutate(IronDef = factor(case_when(Ferritin >= 15 ~ 0, Ferritin < 15 ~ 1)))%>% 
   select(-HbGoedgekeurd, -Geslacht)%>%
   mutate(Intervention_months2 =  if_else(Intervention_months < 6, 0, Intervention_months))%>%
-  mutate(Intervention_months_factor = factor(case_when(Intervention_months == 0 ~ 0, Intervention_months == 1 ~ 0, Intervention_months == 5 ~ 0, Intervention_months == 8 ~ 1, Intervention_months == 10 ~ 1, Intervention_months == 12 ~ 2, Intervention_months == 13 ~ 2,Intervention_months == 16 ~ 2,Intervention_months == 18 ~ 3, Intervention_months == 20 ~ 3, Intervention_months == 24 ~ 4, Intervention_months == 25 ~ 4, Intervention_months == 30 ~ 5, Intervention_months == 36 ~ 6)))#%>%
+  mutate(Intervention_months_factor = factor(case_when(Intervention_months == 0 ~ 0, Intervention_months == 1 ~ 0, Intervention_months == 5 ~ 0, Intervention_months == 8 ~ 1, Intervention_months == 10 ~ 1, Intervention_months == 12 ~ 2, Intervention_months == 13 ~ 2,Intervention_months == 16 ~ 2,Intervention_months == 18 ~ 3, Intervention_months == 20 ~ 3, Intervention_months == 24 ~ 4, Intervention_months == 25 ~ 4, Intervention_months == 30 ~ 5, Intervention_months == 36 ~ 6))) %>%
+  mutate(COVID = factor(case_when(Donatiedatum < "2019-10-01" ~ 0, Donatiedatum >= "2019-10-01" ~ 1)))#%>%
   #mutate(Intervention_months_factor=fct_relevel(Intervention_months_factor, c("0-5 months", "6-11 months", "12-17 months", "18-23 months", "24-29 months", "30-35 months", "36+ months")))
 
 
@@ -74,6 +75,8 @@ data_clean %>% select(-Weight, -Height, -Age) %>% filter(Step == '2019-11-01')
 # Quick view
 summary(data_clean)
 ```
+
+**Note.** Ferritin missing data is expected. Cluster missing data is problematic. Hb max of 999, Ferritin of 2000, is that possible? 504 not tested if HB is good.
 
 ```{r Ferritin plot gender}
 data_clean %>% 
@@ -106,6 +109,8 @@ data_clean %>%
 # 
 data_clean %>% filter(Hb == 999) 
 ```
+
+**Note.** Hb 999 is missing. Ferritin might need action.
 
 ```{r Recode 2: missing, include=FALSE}
 data_clean$Hb <- replace(data_clean$Hb, data_clean$Hb == 999, NA)
@@ -179,7 +184,7 @@ data_clean %>%
 load("findem_scale.Rdta")
 ```
 
-**Note 30-03-2022 (A):** I adjusted the analyses to now use the intervention_months_factor i.e. the 6 month groups
+**Note 30-03-2022 Amber: I adjusted the analyses to now use the intervention_months_factor i.e. the 6 month groups**
 
 ```{r hb females}
 hb_fitF <- lm(Hb ~ Age + Weight + Height + Intervention_months, data = data_scale, subset = data_scale$Gender == "Female")
@@ -276,9 +281,15 @@ returnOT_fit_postF_factor <- update(returnOT_fitFfactor, subset = data_scale$Gen
 returnOT_fit_postF_factor_notdeferred<-update(returnOT_fit_postF_factor, subset = data_scale$Gender=="Female" & data_scale$PostMeno == 1 & data_scale$Ferritin > 30)
 returnOT_fit_postF_factor_deferred<-update(returnOT_fit_postF_factor, subset = data_scale$Gender=="Female" & data_scale$PostMeno == 1 & data_scale$Ferritin <= 30)
 
+returnOT_fit_postF_factor_COVID<-update(returnOT_fit_postF_factor, subset = data_scale$Gender=="Female" & data_scale$PostMeno == 1 & data_scale$COVID ==1)
+returnOT_fit_postF_factor_notCOVID<-update(returnOT_fit_postF_factor, subset = data_scale$Gender=="Female" & data_scale$PostMeno == 1 & data_scale$COVID == 0)
+
 returnOT_fit_preF_factor <- update(returnOT_fitFfactor, subset = data_scale$Gender == "Female" & data_scale$PostMeno == 0)
 returnOT_fit_preF_factor_notdeferred<-update(returnOT_fit_preF_factor, subset = data_scale$Gender=="Female" & data_scale$PostMeno==0 & data_scale$Ferritin>30)
 returnOT_fit_preF_factor_deferred<-update(returnOT_fit_preF_factor, subset = data_scale$Gender=="Female" & data_scale$PostMeno==0 & data_scale$Ferritin<=30)
+
+returnOT_fit_preF_factor_COVID<-update(returnOT_fit_preF_factor, subset = data_scale$Gender=="Female" & data_scale$PostMeno==0 & data_scale$COVID==1)
+returnOT_fit_preF_factor_notCOVID<-update(returnOT_fit_preF_factor, subset = data_scale$Gender=="Female" & data_scale$PostMeno==0 & data_scale$COVID==0)
 ```
 
 ```{r returnOpTijd males}
@@ -288,8 +299,13 @@ returnOT_fitMfactor <- update(returnOT_fitM, formula = ReturnOpTijd ~ Age + Weig
 
 returnOT_fitMfactor_notdeferred <- update(returnOT_fitMfactor, subset = data_scale$Gender == "Male" & data_scale$Ferritin > 30)
 returnOT_fitMfactor_deferred <- update(returnOT_fitMfactor, subset = data_scale$Gender == "Male" & data_scale$Ferritin <= 30)
+
+returnOT_fitMfactor_COVID <- update(returnOT_fitMfactor, subset = data_scale$Gender == "Male" & data_scale$COVID == 1)
+returnOT_fitMfactor_notCOVID <- update(returnOT_fitMfactor, subset = data_scale$Gender == "Male" & data_scale$COVID == 0)
 ```
 **Note** Added a code to have a bit better readable tables, but feel free to remove them
+
+**Note2** Love it!
 
 ```{r nicer tables}
 library(sjPlot)
@@ -305,7 +321,7 @@ pl <- c(
 )
 
 currentDate <- format(Sys.time(), "%Y-%m-%d")
-FolderName <- paste("HTML tables/", currentDate,sep="")
+FolderName <- paste("C:/Users/meule01a/OneDrive - Sanquin/A3 Project FINDEM (OD)/07 Resultaten/HTML tables/", currentDate,sep="")
 dir.create(FolderName)
 
 FileName <- paste("HTML tables/", currentDate, "/hb_fit.html",sep="")
@@ -331,6 +347,9 @@ tab_model(returnOT_fit_preF_factor, returnOT_fit_postF_factor, returnOT_fitMfact
 
 FileName <- paste("HTML tables/", currentDate, "/returnOT_fit_deferral.html",sep="")
 tab_model(returnOT_fit_preF_factor_notdeferred, returnOT_fit_preF_factor_deferred, returnOT_fit_postF_factor_notdeferred, returnOT_fit_postF_factor_deferred, returnOT_fitMfactor_notdeferred, returnOT_fitMfactor_deferred, file = FileName, pred.labels = pl, dv.labels = c("Pre-menopausal women NDef", "Pre-menopausal women Def", "Post-menopausal women NDef", "Post-menopausal women Def", "Men NDef", "Men Def"), title = "Donor return (on time)", show.reflvl = T)
+
+FileName <- paste("C:/Users/meule01a/OneDrive - Sanquin/A3 Project FINDEM (OD)/07 Resultaten/HTML tables/", currentDate, "/returnOT_fit_COVID.html",sep="")
+tab_model(returnOT_fit_preF_factor_notCOVID, returnOT_fit_preF_factor_COVID, returnOT_fit_postF_factor_notCOVID, returnOT_fit_postF_factor_COVID, returnOT_fitMfactor_notCOVID, returnOT_fitMfactor_COVID, file = FileName, pred.labels = pl, dv.labels = c("Pre-menopausal women NCov", "Pre-menopausal women Cov", "Post-menopausal women NCov", "Post-menopausal women Cov", "Men NCov", "Men COV"), title = "Donor return (on time)", show.reflvl = T)
 ```
 
 ```{r plots assumptions hb}
