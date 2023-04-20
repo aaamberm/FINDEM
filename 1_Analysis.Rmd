@@ -54,7 +54,7 @@ data_clean <- data_raw2 %>%
   mutate(Intervention_months = interval(Step, Timepoint) %/% months(1)) %>% mutate(Intervention_months =  if_else(Intervention_months < 0, 0, Intervention_months)) %>% 
   mutate(Intervention = factor(case_when(Intervention_months == 0 ~ 0, TRUE & !is.na(Intervention_months)~ 1))) %>% # just the way I created this shows how useless it is :)
   mutate(PostMeno = factor(case_when(Gender == "Female" & LeeftijdBijDOnatie < 45 ~ 0, Gender== "Female" & LeeftijdBijDOnatie >= 45 ~ 1))) %>%
-  rename(Ferritin = Ferritine_FINDEM, Age = LeeftijdBijDOnatie, Cluster = cluster, Weight = Gewicht, Height = Lengte) %>% select(-HbGoedgekeurd, -Geslacht)
+  rename(Ferritin = Ferritine_FINDEM, Age = LeeftijdBijDOnatie, Cluster = cluster, Weight = Gewicht, Height = Lengte)  %>% mutate(Ferritingood = factor(case_when(Ferritin > 15 ~ 1, Ferritin < 15 ~ 0)))%>% select(-HbGoedgekeurd, -Geslacht)
 
 
 # check
@@ -101,8 +101,6 @@ data_clean %>%
 data_clean %>% filter(Hb == 999) 
 ```
 
-**Note.** Hb 999 is missing. Ferritin might need action.
-
 ```{r Recode 2: missing, include=FALSE}
 data_clean$Hb <- replace(data_clean$Hb, data_clean$Hb == 999, NA)
 data_clean$Ferritin <- replace(data_clean$Ferritin, data_clean$Ferritin >= 1500, NA)
@@ -142,7 +140,7 @@ data_clean %>%
 ```{r Quick & Dirty Exploring Data, eval = FALSE}
 data_clean %>%
   na.omit() %>% 
-  select(-KeyID, -stap, -Meetweek, -Cluster, -Hbgood, -Timepoint, -Step, -Weight, -Height, -Intervention_months) %>%
+  select(-KeyID, -stap, -Meetweek, -Cluster, -Hbgood, -Timepoint, -Step, -Weight, -Height, -Intervention_months, -Ferritingood) %>%
   GGally::ggpairs(mapping = aes(fill    = Intervention,
                               col       = Intervention,
                               alpha     = 0.05),
@@ -158,7 +156,7 @@ data_clean %>%
 ```{r Correlation plot}
 data_clean %>% 
   na.omit() %>% 
-  select(-KeyID, -stap, -Meetweek, -Cluster,-Timepoint, -Step, -Hbgood) %>%
+  select(-KeyID, -stap, -Meetweek, -Cluster,-Timepoint, -Step, -Hbgood, -Ferritingood) %>%
   mutate(Gender = as.numeric(Gender), Intervention = as.numeric(Intervention)) %>%
   rename(Int = Intervention, Months = Intervention_months) %>% 
   cor() %>% 
@@ -226,6 +224,22 @@ ferrlog_fitM <- lm(FerritinLog ~ Age + Weight + Height + Intervention_months, da
 ferrlog_fitMfactor <- update(ferrlog_fitM, formula = FerritinLog ~ Age + Weight + Height + as.factor(Intervention_months))
 ```
 
+```{r ferritin good females}
+ferrgood_fitF <- glm(formula = Ferritingood ~ Age + Weight + Height + Intervention_months, data = data_scale, subset = data_scale$Gender == "Female",family = binomial)
+
+ferrgood_fitFfactor <- update(ferrgood_fitF, formula = Ferritingood ~ Age + Weight + Height + as.factor(Intervention_months))
+ferrgood_fit_preF_factor <- update(ferrgood_fitF, formula = Ferritingood ~ Age + Weight + Height + as.factor(Intervention_months), subset = data_scale$Gender == "Female" & data_scale$PostMeno == 0)
+ferrgood_fit_postF_factor <- update(ferrgood_fitF, formula = Ferritingood ~ Age + Weight + Height + as.factor(Intervention_months), subset = data_scale$Gender == "Female" & data_scale$PostMeno == 1)
+
+```
+
+```{r ferritin good males}
+ferrgood_fitM <- glm(formula = Ferritingood ~ Age + Weight + Height + Intervention_months, data = data_scale, subset = data_scale$Gender == "Male",family = binomial)
+
+ferrgood_fitMfactor <- update(ferrgood_fitF, formula = Ferritingood ~ Age + Weight + Height + as.factor(Intervention_months))
+
+```
+
 **Note** Added a code to have a bit better readable tables, but feel free to remove them
 
 ```{r nicer tables}
@@ -247,7 +261,6 @@ currentDate <- format(Sys.time(), "%Y-%m-%d")
 FolderName <- paste("HTML tables/", currentDate,sep="")
 dir.create(FolderName)
 
-
 FileName <- paste("HTML tables/", currentDate, "/hb_fit.html",sep="")
 tab_model(hb_fit_preF_factor, hb_fit_postF_factor, hb_fitMfactor, file = FileName, pred.labels = pl, dv.labels = c("Pre-menopausal women", "Post-menopausal women", "Men"), show.reflvl = T, title = "Hb levels")
 
@@ -260,4 +273,6 @@ tab_model(ferr_fit_preF_factor, ferr_fit_postF_factor, ferr_fitMfactor, file = F
 FileName <- paste("HTML tables/", currentDate, "/ferrlog_fit.html",sep="")
 tab_model(ferrlog_fit_preF_factor, ferrlog_fit_postF_factor, ferrlog_fitMfactor, file = FileName, pred.labels = pl, dv.labels = c("Pre-menopausal women", "Post-menopausal women", "Men"), title = "Log transformed ferritin levels", show.reflvl = T)
 
+FileName <- paste("HTML tables/", currentDate, "/ferrgood_fit.html",sep="")
+tab_model(ferrgood_fit_preF_factor, ferrgood_fit_postF_factor, ferrgood_fitMfactor, file = FileName, pred.labels = pl, dv.labels = c("Pre-menopausal women", "Post-menopausal women", "Men"), title = "Ferritin levels above 15", show.reflvl = T)
 ```
