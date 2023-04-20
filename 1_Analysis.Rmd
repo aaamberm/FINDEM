@@ -18,6 +18,7 @@ library(GGally)          # extensions to ggplot2
 library(sjlabelled)      # work with SPSS data
 library(lubridate)       # dates
 library(lme4)            # mixed models
+library(car)             # assumptions: vif
 ```
 
 # Clean
@@ -43,6 +44,7 @@ data_raw2 <- data_raw %>% select(KeyID, Hb, HbGoedgekeurd, Ferritine_FINDEM, sta
 
 glimpse(data_raw2)
 ```
+**Note 30-03-2022 (A):** I added the variable Intervention_months2 that we can use to add months 1 and 5 to the control group, then I added another variable Intervention_months_factor that has the 6 month groups
 
 ```{r Recode 1: Factorize, echo=TRUE, rename, and intervention, include=FALSE}
 data_clean <- data_raw2 %>% 
@@ -54,7 +56,10 @@ data_clean <- data_raw2 %>%
   mutate(Intervention_months = interval(Step, Timepoint) %/% months(1)) %>% mutate(Intervention_months =  if_else(Intervention_months < 0, 0, Intervention_months)) %>% 
   mutate(Intervention = factor(case_when(Intervention_months == 0 ~ 0, TRUE & !is.na(Intervention_months)~ 1))) %>% # just the way I created this shows how useless it is :)
   mutate(PostMeno = factor(case_when(Gender == "Female" & LeeftijdBijDOnatie < 45 ~ 0, Gender== "Female" & LeeftijdBijDOnatie >= 45 ~ 1))) %>%
-  rename(Ferritin = Ferritine_FINDEM, Age = LeeftijdBijDOnatie, Cluster = cluster, Weight = Gewicht, Height = Lengte)  %>% mutate(Ferritingood = factor(case_when(Ferritin > 15 ~ 1, Ferritin < 15 ~ 0)))%>% select(-HbGoedgekeurd, -Geslacht)
+  rename(Ferritin = Ferritine_FINDEM, Age = LeeftijdBijDOnatie, Cluster = cluster, Weight = Gewicht, Height = Lengte)  %>% mutate(Ferritingood = factor(case_when(Ferritin > 15 ~ 1, Ferritin < 15 ~ 0)))%>% select(-HbGoedgekeurd, -Geslacht)%>%
+  mutate(Intervention_months2 =  if_else(Intervention_months < 6, 0, Intervention_months))%>%
+  mutate(Intervention_months_factor = factor(case_when(Intervention_months == 0 ~ 0, Intervention_months == 1 ~ 0, Intervention_months == 5 ~ 0, Intervention_months == 8 ~ 1, Intervention_months == 10 ~ 1,Intervention_months == 13 ~ 2,Intervention_months == 16 ~ 2,Intervention_months == 18 ~ 3,Intervention_months == 24 ~ 4)))
+  #mutate(Intervention_months_factor=fct_relevel(Intervention_months_factor, c("0-6 months", "6-12 months", "12-18 months", "18-24 months", "24+ months")))
 
 
 # check
@@ -68,6 +73,7 @@ data_clean %>% select(-Weight, -Height, -Age) %>% filter(Step == '2019-11-01')
 # Quick view
 summary(data_clean)
 ```
+
 
 ```{r Ferritin plot gender}
 data_clean %>% 
@@ -101,6 +107,7 @@ data_clean %>%
 data_clean %>% filter(Hb == 999) 
 ```
 
+
 ```{r Recode 2: missing, include=FALSE}
 data_clean$Hb <- replace(data_clean$Hb, data_clean$Hb == 999, NA)
 data_clean$Ferritin <- replace(data_clean$Ferritin, data_clean$Ferritin >= 1500, NA)
@@ -116,8 +123,11 @@ data_scale$FerritinLog <- log(data_scale$Ferritin)
 ```
 
 ```{r Save, eval = FALSE, include = F}
-write_spss(data_clean, "findem_clean.sav") #using my project folder structure, adapt to yours.
-write_spss(data_scale, "findem_scale.sav")
+#write_spss(data_clean, "findem_clean.sav") #using my project folder structure, adapt to yours.
+#write_spss(data_scale, "findem_scale.sav")
+
+save(data_clean, file = "findem_clean.Rdta")
+save(data_scale, file = "findem_scale.Rdta")
 ```
 
 # Explore
@@ -167,12 +177,14 @@ data_clean %>%
 
 #Analysis
 ```{r read in data for analysis}
-data_scale <- read_sav("findem_scale.sav")
+load("findem_scale.Rdta")
 ```
+
+**Note 30-03-2022 (A)**: I adjusted the analyses to now use the intervention_months_factor i.e. the 6 month groups
 
 ```{r hb females}
 hb_fitF <- lm(Hb ~ Age + Weight + Height + Intervention_months, data = data_scale, subset = data_scale$Gender == "Female")
-hb_fitFfactor <- lm(Hb ~ Age + Weight + Height + as.factor(Intervention_months), data = data_scale, subset = data_scale$Gender == "Female")
+hb_fitFfactor <- lm(Hb ~ Age + Weight + Height + Intervention_months_factor, data = data_scale, subset = data_scale$Gender == "Female")
 
 hb_fit_preF_factor <- update(hb_fitFfactor, subset = data_scale$Gender == "Female" & data_scale$PostMeno == 0)
 hb_fit_postF_factor <- update(hb_fitFfactor, subset = data_scale$Gender == "Female" & data_scale$PostMeno == 1)
@@ -180,13 +192,13 @@ hb_fit_postF_factor <- update(hb_fitFfactor, subset = data_scale$Gender == "Fema
 
 ```{r hb males}
 hb_fitM <- lm(Hb ~ Age + Weight + Height + Intervention_months , data = data_scale, subset = data_scale$Gender == "Male")
-hb_fitMfactor <- lm(Hb ~ Age + Weight + Height + as.factor(Intervention_months), data = data_scale, subset = data_scale$Gender == "Male")
+hb_fitMfactor <- lm(Hb ~ Age + Weight + Height + Intervention_months_factor, data = data_scale, subset = data_scale$Gender == "Male")
 ```
 
 ```{r hb deferral females}
 
 hbdef_fitF <- glm(formula = Hbgood ~ Age + Weight + Height + Intervention_months, data = data_scale, subset = data_scale$Gender == "Female" ,family = binomial)
-hbdef_fitFfactor <- update(hbdef_fitF, formula = Hbgood ~ Age + Weight + Height + as.factor(Intervention_months))
+hbdef_fitFfactor <- update(hbdef_fitF, formula = Hbgood ~ Age + Weight + Height + Intervention_months_factor)
 hbdef_fit_postF_factor <- update(hbdef_fitFfactor, subset = data_scale$Gender == "Female" & data_scale$PostMeno == 1)
 hbdef_fit_preF_factor <- update(hbdef_fitFfactor, subset = data_scale$Gender == "Female" & data_scale$PostMeno == 0)
 ``` 
@@ -196,7 +208,7 @@ hbdef_fit_preF_factor <- update(hbdef_fitFfactor, subset = data_scale$Gender == 
 ```{r hb deferral males}
 hbdef_fitM <- glm(formula = Hbgood ~ Age + Weight + Height + Intervention_months, data = data_scale, subset = data_scale$Gender == "Male" ,family = binomial)
 
-hbdef_fitMfactor <- update(hbdef_fitM, formula = Hbgood ~ Age + Weight + Height + as.factor(Intervention_months))
+hbdef_fitMfactor <- update(hbdef_fitM, formula = Hbgood ~ Age + Weight + Height + Intervention_months_factor)
 
 ```
 
@@ -204,39 +216,39 @@ hbdef_fitMfactor <- update(hbdef_fitM, formula = Hbgood ~ Age + Weight + Height 
 
 ```{r ferritin females}
 ferr_fitF <- lm(Ferritin ~ Age + Weight + Height + Intervention_months , data = data_scale, subset = data_scale$Gender == "Female")
-ferr_fitFfactor <- update(ferr_fitF, formula = Ferritin ~ Age + Weight + Height + as.factor(Intervention_months))
+ferr_fitFfactor <- update(ferr_fitF, formula = Ferritin ~ Age + Weight + Height + Intervention_months_factor)
 ferr_fit_preF_factor <- update(ferr_fitFfactor, subset  = data_scale$Gender == "Female" & data_scale$PostMeno == 0)
 ferr_fit_postF_factor <- update(ferr_fitFfactor, subset = data_scale$Gender == "Female" & data_scale$PostMeno == 1)
 
 #log transformed
 ferrlog_fitF <- lm(FerritinLog ~ Age + Weight + Height + Intervention_months , data = data_scale, subset = data_scale$Gender == "Female")
-ferrlog_fitFfactor <- update(ferrlog_fitF, formula = FerritinLog ~ Age + Weight + Height + as.factor(Intervention_months))
+ferrlog_fitFfactor <- update(ferrlog_fitF, formula = FerritinLog ~ Age + Weight + Height + Intervention_months_factor)
 ferrlog_fit_preF_factor <- update(ferrlog_fitFfactor, subset  = data_scale$Gender == "Female" & data_scale$PostMeno == 0)
 ferrlog_fit_postF_factor <- update(ferrlog_fitFfactor, subset = data_scale$Gender == "Female" & data_scale$PostMeno == 1)
 ```
 
 ```{r ferritin males}
 ferr_fitM <- lm(Ferritin ~ Age + Weight + Height + Intervention_months, data = data_scale, subset = data_scale$Gender == "Male")
-ferr_fitMfactor <- update(ferr_fitM, formula = Ferritin ~ Age + Weight + Height + as.factor(Intervention_months))
+ferr_fitMfactor <- update(ferr_fitM, formula = Ferritin ~ Age + Weight + Height + Intervention_months_factor)
 
 #log transformed
 ferrlog_fitM <- lm(FerritinLog ~ Age + Weight + Height + Intervention_months, data = data_scale, subset = data_scale$Gender == "Male")
-ferrlog_fitMfactor <- update(ferrlog_fitM, formula = FerritinLog ~ Age + Weight + Height + as.factor(Intervention_months))
+ferrlog_fitMfactor <- update(ferrlog_fitM, formula = FerritinLog ~ Age + Weight + Height + Intervention_months_factor)
 ```
 
 ```{r ferritin good females}
 ferrgood_fitF <- glm(formula = Ferritingood ~ Age + Weight + Height + Intervention_months, data = data_scale, subset = data_scale$Gender == "Female",family = binomial)
 
-ferrgood_fitFfactor <- update(ferrgood_fitF, formula = Ferritingood ~ Age + Weight + Height + as.factor(Intervention_months))
-ferrgood_fit_preF_factor <- update(ferrgood_fitF, formula = Ferritingood ~ Age + Weight + Height + as.factor(Intervention_months), subset = data_scale$Gender == "Female" & data_scale$PostMeno == 0)
-ferrgood_fit_postF_factor <- update(ferrgood_fitF, formula = Ferritingood ~ Age + Weight + Height + as.factor(Intervention_months), subset = data_scale$Gender == "Female" & data_scale$PostMeno == 1)
+ferrgood_fitFfactor <- update(ferrgood_fitF, formula = Ferritingood ~ Age + Weight + Height + Intervention_months_factor)
+ferrgood_fit_preF_factor <- update(ferrgood_fitF, formula = Ferritingood ~ Age + Weight + Height + Intervention_months_factor, subset = data_scale$Gender == "Female" & data_scale$PostMeno == 0)
+ferrgood_fit_postF_factor <- update(ferrgood_fitF, formula = Ferritingood ~ Age + Weight + Height + Intervention_months_factor, subset = data_scale$Gender == "Female" & data_scale$PostMeno == 1)
 
 ```
 
 ```{r ferritin good males}
 ferrgood_fitM <- glm(formula = Ferritingood ~ Age + Weight + Height + Intervention_months, data = data_scale, subset = data_scale$Gender == "Male",family = binomial)
 
-ferrgood_fitMfactor <- update(ferrgood_fitF, formula = Ferritingood ~ Age + Weight + Height + as.factor(Intervention_months))
+ferrgood_fitMfactor <- update(ferrgood_fitF, formula = Ferritingood ~ Age + Weight + Height + Intervention_months_factor)
 
 ```
 
@@ -247,14 +259,11 @@ library(sjPlot)
 
 pl <- c(
   `(Intercept)` = "Intercept",
-  `as.factor(Intervention_months)1` = "1 month",
-  `as.factor(Intervention_months)5` = "5 months",
-  `as.factor(Intervention_months)8` = "8 months",
-  `as.factor(Intervention_months)10` = "10 months",
-  `as.factor(Intervention_months)13` = "13 months",
-  `as.factor(Intervention_months)16` = "16 months",
-  `as.factor(Intervention_months)18` = "18 months",
-  `as.factor(Intervention_months)24` = "24 months"
+  Intervention_months_factor1 = "6-12 months",
+  Intervention_months_factor2 = "12-18 months",
+  Intervention_months_factor3 = "18-24 months",
+  Intervention_months_factor4 = "24+ months"
+  
 )
 
 currentDate <- format(Sys.time(), "%Y-%m-%d")
@@ -275,4 +284,68 @@ tab_model(ferrlog_fit_preF_factor, ferrlog_fit_postF_factor, ferrlog_fitMfactor,
 
 FileName <- paste("HTML tables/", currentDate, "/ferrgood_fit.html",sep="")
 tab_model(ferrgood_fit_preF_factor, ferrgood_fit_postF_factor, ferrgood_fitMfactor, file = FileName, pred.labels = pl, dv.labels = c("Pre-menopausal women", "Post-menopausal women", "Men"), title = "Ferritin levels above 15", show.reflvl = T)
+
+```
+
+```{r plots assumptions hb}
+#hb
+par(mfrow = c(2, 2))
+plot(hb_fit_preF_factor)
+plot(hb_fit_postF_factor)
+plot(hb_fitMfactor)
+```
+
+```{r plots assumptions ferritin}
+par(mfrow = c(2, 2))
+plot(ferr_fit_preF_factor)
+plot(ferr_fit_postF_factor)
+plot(ferr_fitMfactor)
+```
+
+```{r plots assumptions log ferritin}
+par(mfrow = c(2, 2))
+plot(ferrlog_fit_preF_factor)
+plot(ferrlog_fit_postF_factor)
+plot(ferrlog_fitMfactor)
+
+#i think the difference between this and the previous block (especially the qq plots) shows why it's better to use log ferritin than normal ferritin as an outcome
+```
+
+```{r assumptions hb deferral}
+#independent observations: i guess yes?
+
+#influential observations:
+plot(hbdef_fit_preF_factor, which = 4) #this one has one quite curious observation so i want to look at the standardized residual
+model.data <- augment(hbdef_fit_preF_factor) %>% 
+  mutate(index = 1:n()) 
+model.data %>% top_n(3, .cooksd) #the absolute standardized residual is not above 3 so we don't have to worry about this outlier.
+
+plot(hbdef_fit_postF_factor, which = 4)
+plot(hbdef_fitMfactor, which = 4)
+
+#no multicollinearity: 
+
+vif(hbdef_fit_preF_factor)
+vif(hbdef_fit_postF_factor)
+vif(hbdef_fitMfactor)
+#vif is not above 4 for any of the covariates
+
+```
+
+```{r assumptions good ferritin}
+#independent observations: i guess yes?
+
+#influential observations:
+plot(ferrgood_fit_preF_factor, which = 4) 
+plot(ferrgood_fit_postF_factor, which = 4)
+plot(ferrgood_fitMfactor, which = 4)
+
+#no multicollinearity: 
+
+vif(ferrgood_fit_preF_factor)
+vif(ferrgood_fit_postF_factor)
+vif(ferrgood_fitMfactor)
+
+#vif is not above 4 for any of the covariates
+
 ```
