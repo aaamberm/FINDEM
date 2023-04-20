@@ -25,7 +25,8 @@ library(car)             # assumptions: vif
 
 ```{r Read-in data, include=FALSE}
 setwd("C:/Users/meule01a/OneDrive - Sanquin/A3 Project FINDEM (OD)")
-data_raw <- read_sav("Donaties_3meetweken_test.sav") #using my project folder structure, adapt to yours.
+oud <- read_sav("Donaties_3meetweken_test.sav")
+data_raw <- read_sav("Donaties_4meetweken_plus.sav") #using my project folder structure, adapt to yours.
 
 ```
 
@@ -40,28 +41,26 @@ glimpse(data_raw)
 data_raw$HbGoedgekeurd %>% attr('labels')
 
 # select
-data_raw2 <- data_raw %>% select(KeyID, Hb, HbGoedgekeurd, Ferritine_FINDEM, stap, Meetweek, cluster, Geslacht, Gewicht, Lengte, LeeftijdBijDOnatie, ReturnOpTijd)
+data_raw2 <- data_raw %>% select(KeyID, Hb, HbGoedgekeurd, Ferritine_FINDEM, stap, Meetweek, cluster, Geslacht, Gewicht, Lengte, LeeftijdBijDOnatie, ReturnOpTijd, Return)
 
 glimpse(data_raw2)
 ```
-
-**Note 30-03-2022 (A):** I added the variable Intervention_months2 that we can use to add months 1 and 5 to the control group, then I added another variable Intervention_months_factor that has the 6 month groups 
-
+**Note 30-03-2022 (A):** I added the variable Intervention_months2 that we can use to add months 1 and 5 to the control group, then I added another variable Intervention_months_factor that has the 6 month groups
 ```{r Recode 1: Factorize, echo=TRUE, rename, and intervention, include=FALSE}
 data_clean <- data_raw2 %>% 
   mutate(HbDef = factor(case_when(HbGoedgekeurd == 0 ~ 1, HbGoedgekeurd == 1 ~ 0))) %>% 
-  mutate(Return = factor(case_when(ReturnOpTijd == 0 ~ 0, ReturnOpTijd == 1 ~ 1))) %>% 
   mutate(Gender = factor(Geslacht) %>% fct_recode("Male" = "Man", "Female" = "Vrouw")) %>% 
-  mutate(Timepoint = case_when(Meetweek == 0 ~ as.Date('2017-11-01'), Meetweek == 1 ~ as.Date('2019-03-01'), TRUE ~ as.Date('2019-11-01'))) %>% 
+  mutate(Timepoint = case_when(Meetweek == 0 ~ as.Date('2017-11-01'), Meetweek == 1 ~ as.Date('2019-03-01'), Meetweek == 2 ~ as.Date('2019-11-01'), TRUE ~ as.Date('2020-11-23'))) %>% 
   mutate(Step = case_when(stap == 1.0 ~ as.Date('2017-11-01'), stap == 2.1 ~ as.Date('2018-05-01'), stap == 2.2~ as.Date('2018-10-01'), 
                           stap == 3.1 ~ as.Date('2019-03-01'), stap == 3.2 ~ as.Date('2019-10-01'), stap == 4.0 ~ as.Date('2019-11-01'))) %>% 
   mutate(Intervention_months = interval(Step, Timepoint) %/% months(1)) %>% mutate(Intervention_months =  if_else(Intervention_months < 0, 0, Intervention_months)) %>% 
   mutate(Intervention = factor(case_when(Intervention_months == 0 ~ 0, TRUE & !is.na(Intervention_months)~ 1))) %>% # just the way I created this shows how useless it is :)
   mutate(PostMeno = factor(case_when(Gender == "Female" & LeeftijdBijDOnatie < 45 ~ 0, Gender== "Female" & LeeftijdBijDOnatie >= 45 ~ 1))) %>%
-  rename(Ferritin = Ferritine_FINDEM, Age = LeeftijdBijDOnatie, Cluster = cluster, Weight = Gewicht, Height = Lengte)  %>% mutate(IronDef = factor(case_when(Ferritin >= 15 ~ 0, Ferritin < 15 ~ 1)))%>% select(-HbGoedgekeurd, -Geslacht)%>%
+  rename(Ferritin = Ferritine_FINDEM, Age = LeeftijdBijDOnatie, Cluster = cluster, Weight = Gewicht, Height = Lengte)  %>% mutate(IronDef = factor(case_when(Ferritin >= 15 ~ 0, Ferritin < 15 ~ 1)))%>% 
+  select(-HbGoedgekeurd, -Geslacht)%>%
   mutate(Intervention_months2 =  if_else(Intervention_months < 6, 0, Intervention_months))%>%
-  mutate(Intervention_months_factor = factor(case_when(Intervention_months == 0 ~ 0, Intervention_months == 1 ~ 0, Intervention_months == 5 ~ 0, Intervention_months == 8 ~ 1, Intervention_months == 10 ~ 1,Intervention_months == 13 ~ 2,Intervention_months == 16 ~ 2,Intervention_months == 18 ~ 3,Intervention_months == 24 ~ 4)))
-  #mutate(Intervention_months_factor=fct_relevel(Intervention_months_factor, c("0-6 months", "6-12 months", "12-18 months", "18-24 months", "24+ months")))
+  mutate(Intervention_months_factor = factor(case_when(Intervention_months == 0 ~ 0, Intervention_months == 1 ~ 0, Intervention_months == 5 ~ 0, Intervention_months == 8 ~ 1, Intervention_months == 10 ~ 1, Intervention_months == 12 ~ 2, Intervention_months == 13 ~ 2,Intervention_months == 16 ~ 2,Intervention_months == 18 ~ 3, Intervention_months == 20 ~ 3, Intervention_months == 24 ~ 4, Intervention_months == 25 ~ 4, Intervention_months == 30 ~ 5, Intervention_months == 36 ~ 6)))#%>%
+  #mutate(Intervention_months_factor=fct_relevel(Intervention_months_factor, c("0-5 months", "6-11 months", "12-17 months", "18-23 months", "24-29 months", "30-35 months", "36+ months")))
 
 
 # check
@@ -75,7 +74,6 @@ data_clean %>% select(-Weight, -Height, -Age) %>% filter(Step == '2019-11-01')
 # Quick view
 summary(data_clean)
 ```
-
 
 ```{r Ferritin plot gender}
 data_clean %>% 
@@ -108,7 +106,6 @@ data_clean %>%
 # 
 data_clean %>% filter(Hb == 999) 
 ```
-
 
 ```{r Recode 2: missing, include=FALSE}
 data_clean$Hb <- replace(data_clean$Hb, data_clean$Hb == 999, NA)
@@ -182,7 +179,7 @@ data_clean %>%
 load("findem_scale.Rdta")
 ```
 
-**Note 30-03-2022 (A)** I adjusted the analyses to now use the intervention_months_factor i.e. the 6 month groups
+**Note 30-03-2022 (A):** I adjusted the analyses to now use the intervention_months_factor i.e. the 6 month groups
 
 ```{r hb females}
 hb_fitF <- lm(Hb ~ Age + Weight + Height + Intervention_months, data = data_scale, subset = data_scale$Gender == "Female")
@@ -214,7 +211,7 @@ hbdef_fitMfactor <- update(hbdef_fitM, formula = HbDef ~ Age + Weight + Height +
 
 ```
 
-**Note 4** based on singularity issues and ICCs of nearly 0 (see chunck at end) we decided to use OLS models instead of mixed models.
+**Note 4** based on singularity issues and ICCs of nearly 0 (see chunk at end) we decided to use OLS models instead of mixed models.
 
 ```{r ferritin females}
 ferr_fitF <- lm(Ferritin ~ Age + Weight + Height + Intervention_months , data = data_scale, subset = data_scale$Gender == "Female")
@@ -255,7 +252,6 @@ irondef_fitMfactor <- update(irondef_fitM, formula = IronDef ~ Age + Weight + He
 ```
 
 **Note** we still need to add the analysis for the donor return, i'm in doubt whether we need to analyse it using logistic regression or with survival analysis?
-
 ```{r donor return females}
 
 return_fitF <- glm(formula = Return ~ Age + Weight + Height + Intervention_months, data = data_scale, subset = data_scale$Gender == "Female" ,family = binomial)
@@ -270,6 +266,29 @@ return_fitM <- glm(formula = Return ~ Age + Weight + Height + Intervention_month
 return_fitMfactor <- update(return_fitM, formula = Return ~ Age + Weight + Height + Intervention_months_factor)
 ```
 
+```{r returnOpTijd females}
+
+returnOT_fitF <- glm(formula = ReturnOpTijd ~ Age + Weight + Height + Intervention_months, data = data_scale, subset = data_scale$Gender == "Female" ,family = binomial)
+
+returnOT_fitFfactor <- update(returnOT_fitF, formula = ReturnOpTijd ~ Age + Weight + Height + Intervention_months_factor)
+
+returnOT_fit_postF_factor <- update(returnOT_fitFfactor, subset = data_scale$Gender == "Female" & data_scale$PostMeno == 1)
+returnOT_fit_postF_factor_notdeferred<-update(returnOT_fit_postF_factor, subset = data_scale$Gender=="Female" & data_scale$PostMeno == 1 & data_scale$Ferritin > 30)
+returnOT_fit_postF_factor_deferred<-update(returnOT_fit_postF_factor, subset = data_scale$Gender=="Female" & data_scale$PostMeno == 1 & data_scale$Ferritin <= 30)
+
+returnOT_fit_preF_factor <- update(returnOT_fitFfactor, subset = data_scale$Gender == "Female" & data_scale$PostMeno == 0)
+returnOT_fit_preF_factor_notdeferred<-update(returnOT_fit_preF_factor, subset = data_scale$Gender=="Female" & data_scale$PostMeno==0 & data_scale$Ferritin>30)
+returnOT_fit_preF_factor_deferred<-update(returnOT_fit_preF_factor, subset = data_scale$Gender=="Female" & data_scale$PostMeno==0 & data_scale$Ferritin<=30)
+```
+
+```{r returnOpTijd males}
+returnOT_fitM <- glm(formula = ReturnOpTijd ~ Age + Weight + Height + Intervention_months, data = data_scale, subset = data_scale$Gender == "Male",family = binomial)
+
+returnOT_fitMfactor <- update(returnOT_fitM, formula = ReturnOpTijd ~ Age + Weight + Height + Intervention_months_factor)
+
+returnOT_fitMfactor_notdeferred <- update(returnOT_fitMfactor, subset = data_scale$Gender == "Male" & data_scale$Ferritin > 30)
+returnOT_fitMfactor_deferred <- update(returnOT_fitMfactor, subset = data_scale$Gender == "Male" & data_scale$Ferritin <= 30)
+```
 **Note** Added a code to have a bit better readable tables, but feel free to remove them
 
 ```{r nicer tables}
@@ -277,11 +296,12 @@ library(sjPlot)
 
 pl <- c(
   `(Intercept)` = "Intercept",
-  Intervention_months_factor1 = "6-12 months",
-  Intervention_months_factor2 = "12-18 months",
-  Intervention_months_factor3 = "18-24 months",
-  Intervention_months_factor4 = "24+ months"
-  
+  Intervention_months_factor1 = "6-11 months",
+  Intervention_months_factor2 = "12-17 months",
+  Intervention_months_factor3 = "18-23 months",
+  Intervention_months_factor4 = "24-29 months",
+  Intervention_months_factor5 = "30-35 months",
+  Intervention_months_factor6 = "36+ months"
 )
 
 currentDate <- format(Sys.time(), "%Y-%m-%d")
@@ -306,7 +326,11 @@ tab_model(irondef_fit_preF_factor, irondef_fit_postF_factor, irondef_fitMfactor,
 FileName <- paste("HTML tables/", currentDate, "/return_fit.html",sep="")
 tab_model(return_fit_preF_factor, return_fit_postF_factor, return_fitMfactor, file = FileName, pred.labels = pl, dv.labels = c("Pre-menopausal women", "Post-menopausal women", "Men"), title = "Donor return", show.reflvl = T)
 
+FileName <- paste("HTML tables/", currentDate, "/returnOT_fit.html",sep="")
+tab_model(returnOT_fit_preF_factor, returnOT_fit_postF_factor, returnOT_fitMfactor, file = FileName, pred.labels = pl, dv.labels = c("Pre-menopausal women", "Post-menopausal women", "Men"), title = "Donor return (on time)", show.reflvl = T)
 
+FileName <- paste("HTML tables/", currentDate, "/returnOT_fit_deferral.html",sep="")
+tab_model(returnOT_fit_preF_factor_notdeferred, returnOT_fit_preF_factor_deferred, returnOT_fit_postF_factor_notdeferred, returnOT_fit_postF_factor_deferred, returnOT_fitMfactor_notdeferred, returnOT_fitMfactor_deferred, file = FileName, pred.labels = pl, dv.labels = c("Pre-menopausal women NDef", "Pre-menopausal women Def", "Post-menopausal women NDef", "Post-menopausal women Def", "Men NDef", "Men Def"), title = "Donor return (on time)", show.reflvl = T)
 ```
 
 ```{r plots assumptions hb}
