@@ -23,7 +23,9 @@ library(lme4)            # mixed models
 # Clean
 
 ```{r Read-in data, include=FALSE}
-data_raw <- read_sav(here::here("Donaties_3meetweken_test.sav")) #using my project folder structure, adapt to yours.
+setwd("C:/Users/meule01a/OneDrive - Sanquin/A3 Project FINDEM (OD)")
+data_raw <- read_sav("Donaties_3meetweken_test.sav") #using my project folder structure, adapt to yours.
+
 ```
 
 ```{r Inspect}
@@ -34,7 +36,7 @@ glimpse(data_raw)
 
 ```{r Select, echo=TRUE}
 # check labels
-data_raw$stap %>% attr('labels')
+data_raw$HbGoedgekeurd %>% attr('labels')
 
 # select
 data_raw2 <- data_raw %>% select(KeyID, Hb, HbGoedgekeurd, Ferritine_FINDEM, stap, Meetweek, cluster, Geslacht, Gewicht, Lengte, LeeftijdBijDOnatie)
@@ -44,13 +46,14 @@ glimpse(data_raw2)
 
 ```{r Recode 1: Factorize, echo=TRUE, rename, and intervention, include=FALSE}
 data_clean <- data_raw2 %>% 
-  mutate(Hbgood = factor(HbGoedgekeurd) %>% fct_recode("Yes" = "1", "No" = "0", "Not tested" = "2")) %>% 
+  mutate(Hbgood = factor(case_when(HbGoedgekeurd == 0 ~ 0, HbGoedgekeurd == 1 ~ 1))) %>% 
   mutate(Gender = factor(Geslacht) %>% fct_recode("Male" = "Man", "Female" = "Vrouw")) %>% 
   mutate(Timepoint = case_when(Meetweek == 0 ~ as.Date('2017-11-01'), Meetweek == 1 ~ as.Date('2019-03-01'), TRUE ~ as.Date('2019-11-01'))) %>% 
   mutate(Step = case_when(stap == 1.0 ~ as.Date('2017-11-01'), stap == 2.1 ~ as.Date('2018-05-01'), stap == 2.2~ as.Date('2018-10-01'), 
                           stap == 3.1 ~ as.Date('2019-03-01'), stap == 3.2 ~ as.Date('2019-10-01'), stap == 4.0 ~ as.Date('2019-11-01'))) %>% 
   mutate(Intervention_months = interval(Step, Timepoint) %/% months(1)) %>% mutate(Intervention_months =  if_else(Intervention_months < 0, 0, Intervention_months)) %>% 
   mutate(Intervention = factor(case_when(Intervention_months == 0 ~ 0, TRUE & !is.na(Intervention_months)~ 1))) %>% # just the way I created this shows how useless it is :)
+  mutate(PostMeno = factor(case_when(Gender == "Female" & LeeftijdBijDOnatie < 45 ~ 0, Gender== "Female" & LeeftijdBijDOnatie >= 45 ~ 1))) %>%
   rename(Ferritin = Ferritine_FINDEM, Age = LeeftijdBijDOnatie, Cluster = cluster, Weight = Gewicht, Height = Lengte) %>% select(-HbGoedgekeurd, -Geslacht)
 
 
@@ -66,7 +69,7 @@ data_clean %>% select(-Weight, -Height, -Age) %>% filter(Step == '2019-11-01')
 summary(data_clean)
 ```
 
-```{r}
+```{r Ferritin plot gender}
 data_clean %>% 
   ggplot() +
   aes(x    = Gender, 
@@ -81,7 +84,7 @@ data_clean %>%
 
 ```
 
-```{r}
+```{r Hb plot gender}
 data_clean %>% 
   ggplot() +
   aes(x    = Gender, 
@@ -98,16 +101,16 @@ data_clean %>%
 data_clean %>% filter(Hb == 999) 
 ```
 
-Hb 999 is missing. Ferritin might need action.
+**Note.** Hb 999 is missing. Ferritin might need action.
 
 ```{r Recode 2: missing, include=FALSE}
 data_clean$Hb <- replace(data_clean$Hb, data_clean$Hb == 999, NA)
+data_clean$Ferritin <- replace(data_clean$Ferritin, data_clean$Ferritin >= 1500, NA)
 
 ```
 
-
 ```{r Save, eval = FALSE}
-write_spss(data_clean, here::here("findem_clean.sav")) #using my project folder structure, adapt to yours.
+write_spss(data_clean, "findem_clean.sav") #using my project folder structure, adapt to yours.
 ```
 
 # Explore
@@ -127,7 +130,7 @@ data_clean %>%
 
 ```
 
-```{r }
+```{r Quick & Dirty Exploring Data, eval = FALSE}
 data_clean %>%
   na.omit() %>% 
   select(-KeyID, -stap, -Meetweek, -Cluster, -Hbgood, -Timepoint, -Step, -Weight, -Height, -Intervention_months) %>%
@@ -143,8 +146,7 @@ data_clean %>%
                 title = "Quick & Dirty Exploring Data") 
 ```
 
-
-```{r}
+```{r Correlation plot}
 data_clean %>% 
   na.omit() %>% 
   select(-KeyID, -stap, -Meetweek, -Cluster,-Timepoint, -Step, -Hbgood) %>%
@@ -155,46 +157,136 @@ data_clean %>%
                            upper  = "number",
                            tl.col = "black")
 ```
-#Analysis 
+
+#Analysis
 
 ```{r hb females}
-hb_fitF <- lmer(Hb ~ Age + Weight + Height + Intervention + Intervention_months + (1|Cluster), data = data_clean, subset = data_clean$Gender == "Female")
-summary(hb_fitF)
+hb_fitF <- lmer(Hb ~ Age + Weight + Height + Intervention_months + (1|Cluster), data = data_clean, subset = data_clean$Gender == "Female")
+hb_fitFfactor <- lmer(Hb ~ Age + Weight + Height + as.factor(Intervention_months) + (1|Cluster), data = data_clean, subset = data_clean$Gender == "Female")
+
+hb_fit_preF_factor <- update(hb_fitFfactor, subset = data_clean$Gender == "Female" & data_clean$PostMeno == 0)
+hb_fit_postF_factor <- update(hb_fitFfactor, subset = data_clean$Gender == "Female" & data_clean$PostMeno == 1)
 ```
 
 ```{r hb males}
-hb_fitM <- lmer(Hb ~ Age + Weight + Height + Intervention + Intervention_months + (1|Cluster), data = data_clean, subset = data_clean$Gender == "Male")
-summary(hb_fitM)
-```
-```{r hb deferral females}
-hbdef_fitF <- glmer(formula = Hbgood ~ Age + Weight + Height + Intervention + Intervention_months + (1|Cluster), data = data_clean, subset = data_clean$Gender == "Female" ,family = binomial, nAGQ = 0)
-summary(hbdef_fitF)
+hb_fitM <- lmer(Hb ~ Age + Weight + Height + Intervention_months + (1|Cluster), data = data_clean, subset = data_clean$Gender == "Male")
+hb_fitMfactor <- lmer(Hb ~ Age + Weight + Height + as.factor(Intervention_months) + (1|Cluster), data = data_clean, subset = data_clean$Gender == "Male")
 ```
 
+```{r hb deferral females}
+#Option 1
+hbdef_fitF <- glmer(formula = Hbgood ~ Age + Weight + Height + Intervention_months + (1|Cluster), data = data_clean, subset = data_clean$Gender == "Female" ,family = binomial, nAGQ = 0)
+
+# mean center
+data_clean$Age_c <- scale(data_clean$Age, center=TRUE, scale = FALSE)
+data_clean$Weight_c <- scale(data_clean$Weight, center=TRUE, scale = FALSE)
+data_clean$Height_c <- scale(data_clean$Height, center=TRUE, scale = FALSE)
+
+#option 2
+hbdef_fitFb <- glmer(formula = Hbgood ~ Age_c + Weight_c + Height_c + Intervention_months + (1|Cluster), data = data_clean, subset = data_clean$Gender == "Female" ,family = binomial, nAGQ = 1)
+hbdef_fitFbfactor <- glmer(formula = Hbgood ~ Age_c + Weight_c + Height_c + as.factor(Intervention_months) + (1|Cluster), data = data_clean, subset = data_clean$Gender == "Female" ,family = binomial, nAGQ = 1)
+```
+
+**Note (S)** nAGQ= 0 is definitely an option, but we got an error because of high eigen values. Re-scaling/centering often solves that error. When I mean center age, weight,and height the error goes away, see option 2.
 
 ```{r hb deferral males}
-hbdef_fitM <- glmer(formula = Hbgood ~ Age + Weight + Height + Intervention + Intervention_months + (1|Cluster), data = data_clean, subset = data_clean$Gender == "Male" ,family = binomial)
-summary(hbdef_fitM)
+hbdef_fitM <- glmer(formula = Hbgood ~ Age + Weight + Height + Intervention_months + (1|Cluster), data = data_clean, subset = data_clean$Gender == "Male" ,family = binomial)
+
+#
+hbdef_fitMb <- glm(formula = Hbgood ~ Age + Weight + Height + Intervention_months, data = data_clean, subset = data_clean$Gender == "Male" ,family = binomial)
+
+hbdef_fitMbfactor <- update(hbdef_fitMb, formula = Hbgood ~ Age + Weight + Height + as.factor(Intervention_months))
+
+```
+
+**Note (A)** I think for singularity, the solution is to make the model more parsimonious (or we need to run a Bayesian model). It seems to be the random intercept. Blatantly removing all covariates doesn't do anything. More importantly, the cluster intercept variance is nearly zero. Also, see chunks below, e.g., icc = .007. I think the solution here might be to not run this as a multilevel model. But it might be good to talk to statistician about this.
+
+**Note (S)** These are of course our initial analyses, for our final analyses we definitely need to look into the missingness. Also we need to look at assumptions.
+
+*Intercept only model*
+
+```{r Intercept Clusters, echo=FALSE}
+# Intercept only model
+Interceptonlymodel<- glm(formula = Hbgood ~ 1,
+                           data = data_clean,
+                           subset = data_clean$Gender == "Male",
+                           family = binomial) 
+summary(Interceptonlymodel)
+```
+
+*Randomintercept only model*
+
+```{r Randomintercept  Clusters, echo=FALSE}
+# Randonintercept only model cluster
+randinterceptonlymodel <- glmer(formula = Hbgood  ~ 1 + (1|Cluster),
+                           data = data_clean, 
+                           subset = data_clean$Gender == "Male",
+                           family = binomial) 
+summary(randinterceptonlymodel)
+```
+
+*ICC*
+
+```{r ICC Clusters, echo=FALSE}
+performance::icc(randinterceptonlymodel)
+```
+
+*Anova between models*
+
+```{r Anova Clusters, echo=FALSE}
+# Anova
+anova(Interceptonlymodel, randinterceptonlymodel)
+```
+
+*Table*
+
+```{r Table CLusters, echo=FALSE}
+# tabel
+data_cleanM <- data_clean %>% filter(Gender == "Male")
+table(data_cleanM$Hbgood, data_cleanM$Cluster)
 ```
 
 ```{r ferritin females}
-ferr_fitF <- lmer(Ferritin ~ Age + Weight + Height + Intervention + Intervention_months + (1|Cluster), data = data_clean, subset = data_clean$Gender == "Female")
-summary(ferr_fitF)
+ferr_fitF <- lmer(Ferritin ~ Age + Weight + Height + Intervention_months + (1|Cluster), data = data_clean, subset = data_clean$Gender == "Female")
+ferr_fitFfactor <- update(ferr_fitF, formula = Ferritin ~ Age + Weight + Height + as.factor(Intervention_months) + (1|Cluster))
 ```
 
 ```{r ferritin males}
-ferr_fitM <- lmer(Ferritin ~ Age + Weight + Height + Intervention + Intervention_months + (1|Cluster), data = data_clean, subset = data_clean$Gender == "Male")
-summary(ferr_fitM)
+ferr_fitM <- lmer(Ferritin ~ Age + Weight + Height + Intervention_months + (1|Cluster), data = data_clean, subset = data_clean$Gender == "Male")
+ferr_fitMfactor <- update(ferr_fitM, formula = Ferritin ~ Age + Weight + Height + as.factor(Intervention_months) + (1|Cluster))
 ```
 
 **Note** Added a code to have a bit better readable tables, but feel free to remove them
 
+**Note (S)** Love it!
+
 ```{r nicer tables}
 library(sjPlot)
-tab_model(hb_fitF, file = "HTML tables/hb_fitF.html")
-tab_model(hb_fitM, file = "HTML tables/hb_fitM.html")
-tab_model(hbdef_fitF, file = "HTML tables/hbdef_fitF.html")
-tab_model(hbdef_fitM, file = "HTML tables/hbdef_fitM.html")
-tab_model(ferr_fitF, file = "HTML tables/ferr_fitF.html")
-tab_model(ferr_fitM, file = "HTML tables/ferr_fitM.html")
+pred.labels <- c("Intercept","Age", "Weight", "Height", "1 month", "5 months", "8 months", "10 months", "13 months", "16 months", "18 months", "24 months")
+
+tab_model(hb_fit_preF_factor, hb_fit_postF_factor, file = "HTML tables/hb_fitF.html", pred.labels = pred.labels, dv.labels = c("Hb (Pre-menopausal)", "Hb (Post-menopausal)"), show.reflvl = T)
+
+tab_model(hb_fitM, hb_fitMfactor, file = "HTML tables/hb_fitM.html", pred.labels = pred.labels)
+
+tab_model(hbdef_fitFb, hbdef_fitFbfactor, file = "HTML tables/hbdef_fitF.html", pred.labels = pred.labels)
+
+tab_model(hbdef_fitM, hbdef_fitMb, hbdef_fitMbfactor, file = "HTML tables/hbdef_fitM.html", pred.labels = pred.labels, dv.labels = c("Hbgood (glmer)","Hbgood (glm)","Hbgood (glm)"))
+
+tab_model(ferr_fitF, ferr_fitFfactor, file = "HTML tables/ferr_fitF.html", pred.labels = pred.labels)
+
+tab_model(ferr_fitM, ferr_fitMfactor, file = "HTML tables/ferr_fitM.html", pred.labels = pred.labels)
+```
+**Note** t00 = intercept variance
+
+##ICC
+```{r ICC}
+#for all models specified
+performance::icc(hb_fitMfactor)
+performance::icc(hb_fitFfactor)
+
+performance::icc(hbdef_fitFbfactor)
+performance::icc(hbdef_fitM)
+
+performance::iCC(ferr_fitMfactor) #issue
+performance::icc(ferr_fitFfactor)
 ```
