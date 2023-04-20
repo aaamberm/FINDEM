@@ -1,0 +1,191 @@
+---
+title: "Find'em primary analyses prep"
+author: "S Ramondt"
+date: "1/30/2022"
+output: html_document
+editor_options: 
+  chunk_output_type: inline
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)       
+library(haven)           # inporting SPSS data files
+library(furniture)       # nice tables of descriptives
+library(corrplot)        # visualize correlations
+library(GGally)          # extensions to ggplot2
+library(sjlabelled)      # work with SPSS data
+library(lubridate)       # dates
+library(lme4)            # mixed models
+```
+
+# Clean
+
+```{r Read-in data, include=FALSE}
+data_raw <- read_sav(here::here("Donaties_3meetweken_test.sav")) #using my project folder structure, adapt to yours.
+
+```
+
+```{r Inspect}
+head(data_raw)
+glimpse(data_raw)
+
+```
+
+```{r Select, echo=TRUE}
+# check labels
+data_raw$stap %>% attr('labels')
+
+# select
+data_raw2 <- data_raw %>% select(KeyID, Hb, HbGoedgekeurd, Ferritine_FINDEM, stap, Meetweek, cluster, Geslacht, Gewicht, Lengte, LeeftijdBijDOnatie)
+
+glimpse(data_raw2)
+```
+
+```{r Recode 1: Factorize, echo=TRUE, rename, and intervention, include=FALSE}
+data_clean <- data_raw2 %>% 
+  mutate(Hbgood = factor(HbGoedgekeurd) %>% fct_recode("Yes" = "1", "No" = "0", "Not tested" = "2")) %>% 
+  mutate(Gender = factor(Geslacht) %>% fct_recode("Male" = "Man", "Female" = "Vrouw")) %>% 
+  mutate(Timepoint = case_when(Meetweek == 0 ~ as.Date('2017-11-01'), Meetweek == 1 ~ as.Date('2019-03-01'), TRUE ~ as.Date('2019-11-01'))) %>% 
+  mutate(Step = case_when(stap == 1.0 ~ as.Date('2017-11-01'), stap == 2.1 ~ as.Date('2018-05-01'), stap == 2.2~ as.Date('2018-10-01'), 
+                          stap == 3.1 ~ as.Date('2019-03-01'), stap == 3.2 ~ as.Date('2019-10-01'), stap == 4.0 ~ as.Date('2019-11-01'))) %>% 
+  mutate(Intervention_months = interval(Step, Timepoint) %/% months(1)) %>% mutate(Intervention_months =  if_else(Intervention_months < 0, 0, Intervention_months)) %>% 
+  mutate(Intervention = factor(case_when(Intervention_months == 0 ~ 0, TRUE & !is.na(Intervention_months)~ 1))) %>%   rename(Ferritin = Ferritine_FINDEM, Age = LeeftijdBijDOnatie, Cluster = cluster, Weight = Gewicht, Height = Lengte) %>% select(-HbGoedgekeurd, -Geslacht)
+
+
+# check
+data_clean %>% select(-Weight, -Height, -Age) %>% head()
+glimpse(data_clean)
+data_clean %>% select(-Weight, -Height, -Age) %>% filter(Step == '2019-11-01')
+
+```
+
+```{r Summary Statistics 1}
+# Quick view
+summary(data_clean)
+```
+
+**Note (S)** Ferritin missing data is expected due to errors on the analyser and samples not handled properly. Cluster missing data is problematic: we can't use these records. Hb max of 999, Ferritin of 2000, is that possible? 504 not tested if HB is good.
+**Note (A)** Hb max of 999 is an NA, technically ferritin of 2000 is possible.
+
+```{r}
+data_clean %>% 
+  ggplot() +
+  aes(x    = Gender, 
+      y    = Ferritin,
+      fill = Gender) +
+  geom_boxplot(alpha = 0.6) +
+  scale_fill_manual(values = c("mediumblue", "maroon3")) +
+  labs(x = "Gender",
+       y = "Ferritin") +
+  guides(fill = FALSE) +
+  theme_bw()
+
+```
+
+```{r}
+data_clean %>% 
+  ggplot() +
+  aes(x    = Gender, 
+      y    = Hb,
+      fill = Gender) +
+  geom_boxplot(alpha = 0.6) +
+  scale_fill_manual(values = c("mediumblue", "maroon3")) +
+  labs(x = "Gender",
+       y = "Hb") +
+  guides(fill = "none") +
+  theme_bw()
+
+# 
+data_clean %>% filter(Hb == 999) 
+```
+
+
+```{r Recode 2: missing, include=FALSE}
+data_clean$Hb <- replace(data_clean$Hb, data_clean$Hb == 999, NA)
+
+```
+
+
+```{r Save, eval = FALSE}
+write_spss(data_clean, here::here("findem_clean.sav")) #using my project folder structure, adapt to yours.
+```
+
+# Explore
+
+```{r Summary Statistics 2}
+# Quick view
+summary(data_clean)
+```
+
+```{r Table 1}
+# Intevention yes/no
+data_clean %>% 
+  select(-KeyID,-stap, -Meetweek, -Cluster, -Ferritin, -Timepoint, -Step) %>% 
+  group_by(Intervention) %>% 
+  table1(output = "markdown",
+         total = TRUE)
+
+```
+
+```{r }
+data_clean %>%
+  na.omit() %>% 
+  select(-KeyID, -stap, -Meetweek, -Cluster, -Hbgood, -Timepoint, -Step, -Weight, -Height, -Intervention_months) %>%
+  GGally::ggpairs(mapping = aes(fill    = Intervention,
+                              col       = Intervention,
+                              alpha     = 0.05),
+                upper = list(continuous = "smooth",
+                             combo      = "facethist",
+                             discrete   = "ratio"),
+                lower = list(continuous = "cor",
+                             combo      = "box",
+                             discrete   = "facetbar"),
+                title = "Quick & Dirty Exploring Data") 
+```
+
+
+```{r}
+data_clean %>% 
+  na.omit() %>% 
+  select(-KeyID, -stap, -Meetweek, -Cluster,-Timepoint, -Step, -Hbgood) %>%
+  mutate(Gender = as.numeric(Gender), Intervention = as.numeric(Intervention)) %>%
+  rename(Int = Intervention, Months = Intervention_months) %>% 
+  cor() %>% 
+  corrplot.mixed(lower  = "ellipse",
+                           upper  = "number",
+                           tl.col = "black")
+```
+#Analysis 
+
+```{r hb females}
+hb_fitF <- lmer(Hb ~ Age + Weight + Height + Intervention + Intervention_months + (1|Cluster), data = data_clean, subset = data_clean$Gender == "Female")
+summary(hb_fitF)
+```
+
+```{r hb males}
+hb_fitM <- lmer(Hb ~ Age + Weight + Height + Intervention + Intervention_months + (1|Cluster), data = data_clean, subset = data_clean$Gender == "Male")
+summary(hb_fitM)
+```
+```{r hb deferral females}
+hbdef_fitF <- glmer(formula = Hbgood ~ Age + Weight + Height + Intervention + Intervention_months + (1|Cluster), data = data_clean, subset = data_clean$Gender == "Female" ,family = binomial, nAGQ = 0)
+summary(hbdef_fitF)
+```
+**Note (S)** Get an error for females because the model couldn't converge, but added nAGQ = 0 because recommended on stackoverflow (and by a former teacher of mine). This has to do with method of likelihood approximation.
+
+```{r hb deferral males}
+hbdef_fitM <- glmer(formula = Hbgood ~ Age + Weight + Height + Intervention + Intervention_months + (1|Cluster), data = data_clean, subset = data_clean$Gender == "Male" ,family = binomial)
+summary(hbdef_fitM)
+```
+**Note (S)** Here we have an issue with a singular fit 
+
+```{r ferritin females}
+ferr_fitF <- lmer(Ferritin ~ Age + Weight + Height + Intervention + Intervention_months + (1|Cluster), data = data_clean, subset = data_clean$Gender == "Female")
+summary(ferr_fitF)
+```
+
+```{r ferritin males}
+ferr_fitM <- lmer(Ferritin ~ Age + Weight + Height + Intervention + Intervention_months + (1|Cluster), data = data_clean, subset = data_clean$Gender == "Male")
+summary(ferr_fitM)
+```
