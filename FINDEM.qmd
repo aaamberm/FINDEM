@@ -5,6 +5,7 @@ format:
     code-fold: true
 #    page-layout: full
     toc: true
+    embed-resources: true
 ---
 
 ```{r}
@@ -509,20 +510,24 @@ par(mfrow = c(2, 2))
 plot(ferritin_fit_preF)
 plot(ferritin_fit_postF)
 plot(ferritin_fitM)
-
-#i think the difference between this and the previous block (especially the qq plots) shows why it's better to use log ferritin than normal ferritin as an outcome
 ```
 
 ### Hb deferral
+Independent observations: yes, we checked clustering with the LMM. Moreover, there is no longitudinal dependence. 
+
+Influential observations:
 ```{r}
 #| label: hb deferral assumptions
-#independent observations: yes, we checked clustering with the LMM and there is no longitudinal dependence. 
 
-#influential observations:
 plot(hbdef_fit_preF, which = 4) #this one has one quite curious observation so i want to look at the standardized residual
 model.data <- augment(hbdef_fit_preF) %>% 
   dplyr::mutate(index = 1:n()) 
 model.data %>% top_n(3, .cooksd) #the absolute standardized residual is not above 3 so we don't have to worry about this outlier.
+```
+
+Since this observation has a quite curious cook's distance, we looked at the absolute standardized residual. However, it's not above 3 so we don't have to worry about it. 
+
+```{r}
 
 plot(hbdef_fit_postF, which = 4)
 plot(hbdef_fitM, which = 4)
@@ -564,13 +569,19 @@ VIF is not above 4 for any of the covariates
 plot(returnOT_fit_preF, which = 4) 
 model.data <- augment(returnOT_fit_preF) %>% 
   dplyr::mutate(index = 1:n()) 
-model.data %>% top_n(3, .cooksd)  #the absolute standardized residual is not above 3 so we don't have to worry about this outlier.
+model.data %>% top_n(3, .cooksd) 
 
 plot(returnOT_fit_postF, which = 4)
 
 model.data <- augment(returnOT_fit_postF) %>% 
   dplyr::mutate(index = 1:n()) 
-model.data %>% top_n(3, .cooksd)  #the absolute standardized residual is not above 3 so we don't have to worry about this outlier.
+model.data %>% top_n(3, .cooksd) 
+
+```
+
+Again some observations that stand out. However, the absolute standardized residuals are not above 3.
+
+```{r}
 
 plot(returnOT_fitM, which = 4)
 
