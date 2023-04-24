@@ -24,6 +24,7 @@ library(rstudioapi)      # for working directory
 library(table1)          # for producing t1
 library(sjPlot)          # for model outputs
 library(car)             # to calculate VIF
+library(broom)           # for function augment
 
 setwd("~/Amber/FINDEM") 
 ```
@@ -371,7 +372,7 @@ summary(ferritin_fit_postF)
 ::: {.callout-note appearance="default"}
 ### Decision
 
-We decide to proceed with the analyses using standard linear regression models using only fixed effects, thus disregarding the random effects from clustering by donation center cluster. We made this decision based on:
+We decide to proceed with the analyses using standard linear regression models using only fixed effects, thus disregarding the random effects from clustering by donation center cluster. We decided to deviate from the protocol based on:
 
 -   the ICC that ranges from 0.000 to 0.05
 
@@ -515,7 +516,7 @@ plot(ferritin_fitM)
 ### Hb deferral
 ```{r}
 #| label: hb deferral assumptions
-#independent observations: i guess yes?
+#independent observations: yes, we checked clustering with the LMM and there is no longitudinal dependence. 
 
 #influential observations:
 plot(hbdef_fit_preF, which = 4) #this one has one quite curious observation so i want to look at the standardized residual
@@ -531,15 +532,15 @@ plot(hbdef_fitM, which = 4)
 vif(hbdef_fit_preF)
 vif(hbdef_fit_postF)
 vif(hbdef_fitM)
-#vif is not above 4 for any of the covariates
-
 ```
+
+VIF is not above 4 for any of the covariates
 
 
 ### Iron deficiency
 ```{r}
 #| label: iron deficiency assumptions
-#independent observations: i guess yes?
+#independent observations: yes, we checked clustering with the LMM and there is no longitudinal dependence. 
 
 #influential observations:
 plot(ID_fit_preF, which = 4) 
@@ -551,19 +552,26 @@ plot(ID_fitM, which = 4)
 vif(ID_fit_preF)
 vif(ID_fit_postF)
 vif(ID_fitM)
-
-#vif is not above 4 for any of the covariates
-
 ```
+VIF is not above 4 for any of the covariates
 
 ### Donor return
 ```{r}
 #| label: donor return assumptions
-#independent observations: i guess yes?
+#independent observations: yes, we checked clustering with the LMM and there is no longitudinal dependence. 
 
 #influential observations:
 plot(returnOT_fit_preF, which = 4) 
+model.data <- augment(returnOT_fit_preF) %>% 
+  dplyr::mutate(index = 1:n()) 
+model.data %>% top_n(3, .cooksd)  #the absolute standardized residual is not above 3 so we don't have to worry about this outlier.
+
 plot(returnOT_fit_postF, which = 4)
+
+model.data <- augment(returnOT_fit_postF) %>% 
+  dplyr::mutate(index = 1:n()) 
+model.data %>% top_n(3, .cooksd)  #the absolute standardized residual is not above 3 so we don't have to worry about this outlier.
+
 plot(returnOT_fitM, which = 4)
 
 #no multicollinearity: 
@@ -571,7 +579,12 @@ plot(returnOT_fitM, which = 4)
 vif(returnOT_fit_preF)
 vif(returnOT_fit_postF)
 vif(returnOT_fitM)
-
-#vif is not above 4 for any of the covariates
-
 ```
+
+VIF is not above 4 for any of the covariates
+
+::: {.callout-note appearance="default"}
+### Decision
+
+We conclude that the assumptions for none of the models were violated.
+:::
