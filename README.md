@@ -71,5 +71,5 @@ required to retain donors.
 
 ## Study protocol
 
-The protocol of the FIND'EM study can be found here:
+The published protocol of the FIND'EM study can be found here:
 <https://pubmed.ncbi.nlm.nih.gov/32998766/>
