@@ -1,0 +1,1557 @@
+---
+title: "Effectiveness of Ferritin‐guided Donation Intervals in Blood Donors: results of the Stepped Wedge Cluster‐randomized FIND’EM Trial (questionnaires)"
+format:
+  html:
+    code-fold: true
+#    page-layout: full
+    toc: true
+    embed-resources: true
+---
+
+```{r}
+#| label: load-packages
+#| include: false
+
+library(tidyverse)       
+library(haven)           # importing SPSS data files
+library(furniture)       # nice tables of descriptives
+library(corrplot)        # visualize correlations
+library(ggplot2)         # plot making
+library(GGally)          # extensions to ggplot2
+library(sjlabelled)      # work with SPSS data
+library(lubridate)       # dates
+library(lme4)            # mixed models
+library(table1)          # for producing t1
+library(sjPlot)          # for model outputs
+library(car)             # to calculate VIF
+library(broom)           # for function augment
+library(lmtest)          # assumption tests
+library(sandwich)        # heteroskedasticity
+library(olsrr)           # outlier analysis
+library(robustbase)      #robust regression
+
+setwd("~/Amber/FINDEM") 
+```
+
+# Data
+
+We load and scale the data.
+
+```{r, collapse = T}
+#| label: process data
+data_clean <- read_sav("data/Final_survey.sav") 
+data_scale <- data_clean %>% dplyr::select(-Einnummer, -Cluster, -Date, -Timepoint, -Meetweek) %>% 
+  mutate(Gender = factor(Gender) %>% fct_recode("Male" = "1", "Female" = "2")) %>%
+  mutate(PICA = factor(PICA) %>% fct_recode("Yes" = "1", "No" = "0")) %>% 
+  mutate(RLS = factor(case_when(RLS == 2 ~ 1, RLS == 1 ~ 0)) %>% fct_recode("Yes" = "1", "No" = "0")) %>% 
+  mutate(Intervention_months_factor = factor(case_when(Intervention_months_s < 6 ~ 0, Intervention_months_s >= 6 & Intervention_months_s <12 ~ 1, Intervention_months_s >= 12 & Intervention_months_s < 18 ~ 2, Intervention_months_s >= 18  & Intervention_months_s < 24 ~ 3,Intervention_months_s >= 24 ~ 4))) %>% 
+  mutate(Fergroup = factor(case_when(Ferritin < 15 ~ 1, Ferritin >= 15 & Ferritin <= 30~ 2, Ferritin > 30 ~ 3)) %>%  fct_recode("Ferritin < 15" = "1", "Ferritin 15-30" = "2", "Ferritin > 30" = "3")) %>% 
+  mutate(Warmglow = as.numeric(Warmglow))  %>% mutate(Warmglow = as.factor(case_when(Warmglow >=6 ~ 1, TRUE & !is.na(Warmglow) ~ 0)) %>% fct_recode("Yes" = "1", "No" = "0"))
+data_scale$Age <- scale(data_scale$Age, center=TRUE, scale = FALSE)
+data_scale$Weight <- scale(data_scale$Weight, center=TRUE, scale = FALSE)
+data_scale$Height <- scale(data_scale$Height, center=TRUE, scale = FALSE)
+```
+
+# Descriptives
+
+We present a descriptives table for the outcomes we will analyse, including:
+
+-   PICA
+-   Restless legs syndrome (RLS)
+-   Cognitive functioning (CFQ)
+-   Physical health (SF_ph)
+-   Mental health (SF_mh)
+-   Warm glow
+-   Fatigue (CIS)
+ 
+```{r}
+ #| label: t1 premenopausal females
+data_t1 <- data_scale %>% mutate(stap2 = as.factor(stap), stap2 = recode_factor(stap2, "2.1"="2","2.2"="2", "3.1"="3", "3.2"="3"), stap2 = factor(stap2,levels = c("1", "2", "3", "4")))
+
+prefemalest1<-table1::table1(~ Age + Hb + Ferritin + factor(PICA) + factor(RLS) + CFQ_Total + SF_ph + SF_mh + Warmglow + CIS_Totalmean | factor(stap2), data = subset(data_t1, data_t1$Gender=="Female" & data_t1$PostMeno==0), caption = "Premenopausal females", render.continuous=c(.="Mean (SD)", .="Median [Q1, Q3]"), render.categorical=c(.="FREQ (PCT)"))
+prefemalest1
+```
+
+```{r}
+#| label: t1 postmenopausal females
+postfemalest1<-table1::table1(~ Age + Hb + Ferritin + factor(PICA) + factor(RLS) + CFQ_Total + SF_ph + SF_mh + Warmglow + CIS_Totalmean | factor(stap2), data = subset(data_t1, data_t1$Gender=="Female" & data_t1$PostMeno==1), caption = "Premenopausal females", render.continuous=c(.="Mean (SD)", .="Median [Q1, Q3]"), render.categorical=c(.="FREQ (PCT)"))
+postfemalest1
+```
+
+```{r}
+#| label: males t1
+
+malest1<-table1::table1(~ Age + Hb + Ferritin + factor(PICA) + factor(RLS) + CFQ_Total + SF_ph + SF_mh + Warmglow + CIS_Totalmean | factor(stap2), data = subset(data_t1, data_t1$Gender=="Male"), caption = "Premenopausal females", render.continuous=c(.="Mean (SD)", .="Median [Q1, Q3]"), render.categorical=c(.="FREQ (PCT)"))
+malest1
+```
+
+# Analysis
+
+## PICA
+
+PICA is diagnosed when donor answers yes to:  do you crave and regularly eat non-food items such as ice, clay, mud, sand, raw pasta, chalk or charcoal? (translated)
+
+### Models
+
+```{r}
+#| label: PICA log reg
+PICA_fitM <- glm(formula = PICA ~ Age + Weight + Height + Intervention_months_factor, data = data_scale, subset = data_scale$Gender == "Male" ,family = binomial)
+PICA_fit_preF <- glm(formula = PICA ~ Age + Weight + Height + Intervention_months_factor, data = data_scale, subset = data_scale$Gender == "Female" & data_scale$PostMeno == 0 ,family = binomial)
+PICA_fit_postF <- glm(formula = PICA ~ Age + Weight + Height + Intervention_months_factor, data = data_scale, subset = data_scale$Gender == "Female" & data_scale$PostMeno == 1 ,family = binomial)
+
+pl <- c(
+  `(Intercept)` = "Intercept",
+  Intervention_months_factor0 = "0-5 months",
+  Intervention_months_factor1 = "6-11 months",
+  Intervention_months_factor2 = "12-17 months",
+  Intervention_months_factor3 = "18-23 months",
+  Intervention_months_factor4 = "24+ months"
+)
+
+tab_model(PICA_fit_preF, PICA_fit_postF, PICA_fitM, pred.labels = pl, dv.labels = c("Pre-menopausal women", "Post-menopausal women", "Men"), show.reflvl = T, title = "PICA")
+```
+
+### Model assumptions
+
+**Premenopausal females:**
+
+```{r, warning=F, message=F, error=F}
+#| label: assumptions PICA premenopausal females
+
+plot(PICA_fit_preF, which = 4, id.n = 3)
+
+#Inspect the largest:
+model.data <- augment(PICA_fit_preF) %>% 
+  mutate(index = 1:n())
+model.data %>% top_n(3, .cooksd) 
+
+#Plot standardized residuals: 
+ggplot(model.data, aes(index, .std.resid)) + 
+  geom_point(aes(color = PICA), alpha = .5) +
+  theme_bw()
+
+# Filter potential influential data point
+model.data %>% 
+  filter(abs(.std.resid) > 3) # 4 influential data points
+
+# Plot Cook's Distance with a horizontal line at K+1/n to see which observations exceed this threshold (* 3, see Stevens, 2002)
+n <- nrow(data_scale)
+cooksd = cooks.distance(PICA_fit_preF)
+plot(cooksd, main="Cooks Distance for Influential Obs")
+abline(h = (8/n) * 3, lty = 2, col = "steelblue") # add cutoff line
+
+# influence plot
+car::influencePlot(PICA_fit_preF,col="red",id.n=3)
+car::influenceIndexPlot(PICA_fit_preF, id.n=3)
+
+# check without some outliers
+data_scale2 <- data_scale[c(-4453, -3788, -7722), ]
+PICA_fit_preF_upd1 <- update(PICA_fit_preF, data = data_scale2, subset= data_scale2$Gender == "Female" & data_scale2$PostMeno == 0)
+car::compareCoefs(PICA_fit_preF,PICA_fit_preF_upd1) # no improvement
+
+summary(PICA_fit_preF)
+summary(PICA_fit_preF_upd1)
+
+#multicollinearity
+car::vif(PICA_fit_preF) # no VIF value that exceeds 5 or 10 
+```
+
+**Postmenopausal females:**
+
+```{r, warning=F, message=F, error=F}
+#| label: assumptions PICA postmenopausal females
+
+plot(PICA_fit_postF, which = 4, id.n = 3)
+
+#Inspect the largest:
+model.data <- augment(PICA_fit_postF) %>% 
+  mutate(index = 1:n())
+model.data %>% top_n(3, .cooksd) 
+
+#Plot standardized residuals: 
+ggplot(model.data, aes(index, .std.resid)) + 
+  geom_point(aes(color = PICA), alpha = .5) +
+  theme_bw()
+
+# Filter potential influential data point
+model.data %>% 
+  filter(abs(.std.resid) > 3) # 4 influential data points
+
+# Plot Cook's Distance with a horizontal line at K+1/n to see which observations exceed this threshold (* 3, see Stevens, 2002)
+n <- nrow(data_scale)
+cooksd = cooks.distance(PICA_fit_postF)
+plot(cooksd, main="Cooks Distance for Influential Obs")
+abline(h = (8/n) * 3, lty = 2, col = "steelblue") # add cutoff line
+
+# influence plot
+car::influencePlot(PICA_fit_postF,col="red",id.n=3)
+car::influenceIndexPlot(PICA_fit_postF, id.n=3)
+
+# check without some outliers
+data_scale2 <- data_scale[c(-1968, -3889, -7354), ]
+PICA_fit_postF_upd1 <- update(PICA_fit_postF, data = data_scale2, subset= data_scale2$Gender == "Female" & data_scale2$PostMeno == 0)
+car::compareCoefs(PICA_fit_postF,PICA_fit_postF_upd1) # no improvement
+
+summary(PICA_fit_postF)
+summary(PICA_fit_postF_upd1)
+
+#multicollinearity
+car::vif(PICA_fit_postF) # no VIF value that exceeds 5 or 10 
+```
+
+**Males:**
+```{r, warning=F, message=F, error=F}
+#| label: assumptions PICA males
+
+plot(PICA_fitM, which = 4, id.n = 3)
+
+#Inspect the largest:
+model.data <- augment(PICA_fitM) %>% 
+  mutate(index = 1:n())
+model.data %>% top_n(3, .cooksd) 
+
+#Plot standardized residuals: 
+ggplot(model.data, aes(index, .std.resid)) + 
+  geom_point(aes(color = PICA), alpha = .5) +
+  theme_bw()
+
+# Filter potential influential data point
+model.data %>% 
+  filter(abs(.std.resid) > 3) # 4 influential data points
+
+# Plot Cook's Distance with a horizontal line at K+1/n to see which observations exceed this threshold (* 3, see Stevens, 2002)
+n <- nrow(data_scale)
+cooksd = cooks.distance(PICA_fitM)
+plot(cooksd, main="Cooks Distance for Influential Obs")
+abline(h = (8/n) * 3, lty = 2, col = "steelblue") # add cutoff line
+
+# influence plot
+car::influencePlot(PICA_fitM,col="red",id.n=3)
+car::influenceIndexPlot(PICA_fitM, id.n=3)
+
+# check without some outliers
+data_scale2 <- data_scale[c(-6621, -1294, -7465), ]
+PICA_fitM_upd1 <- update(PICA_fitM, data = data_scale2, subset= data_scale2$Gender == "Female" & data_scale2$PostMeno == 0)
+car::compareCoefs(PICA_fitM,PICA_fitM_upd1) # no improvement
+
+summary(PICA_fitM)
+summary(PICA_fitM_upd1)
+
+#multicollinearity
+car::vif(PICA_fitM) # no VIF value that exceeds 5 or 10 
+```
+
+## Restless legs syndrome
+
+Restless legs syndrome (RLS) diagnose was based of Burchell & Alleen, 2008. Validation of the self-completed Cambridge-Hopkins questionnaire (CH-RLSq) for ascertainment of restless legs syndrome (RLS) in a population survey.
+
+### Predict by ferritin
+```{r, warning=F, message=F, error=F}
+#| label: investigate RLS & ferritin
+# Compute the analysis of variance
+data_scale$RLS <- as.numeric(data_scale$RLS)
+means <- round(aggregate(Ferritin ~  RLS, data_scale, mean), 1)
+res.aov <- aov(RLS ~ Fergroup, data = data_scale)
+summary(res.aov)
+
+#fit model
+fit1 <- lm(RLS ~ 1 + Fergroup, data = data_scale)
+summary(fit1)
+
+data_scale <- data_scale %>% mutate(RLS = factor(case_when(RLS == 2 ~ 1, RLS == 1 ~ 0)) %>% fct_recode("Yes" = "1", "No" = "0"))
+
+# Barplot
+data_scale_per2 <- data_scale %>%
+ group_by(Fergroup) %>% 
+  count(RLS) %>%
+  mutate(
+    Percentage = round(proportions(n) * 100, 1),
+    res = str_c(n, "(", Percentage, ")%")
+    )
+ggplot(subset(data_scale_per2, !is.na(RLS)), aes(Fergroup, Percentage, fill = RLS)) +
+  geom_col(position = "dodge") + 
+  geom_text(aes(label = res), vjust = -0.2)+ 
+  theme_bw()
+
+ggplot(data_scale , mapping = aes(x = Fergroup, fill = RLS)) +
+  geom_bar(position = "dodge") + 
+  theme_bw()
+
+# t-test + boxplot
+res <- res <- t.test(Ferritin ~ RLS, data = data_scale, var.equal = TRUE)
+res
+
+ggplot(subset(data_scale, !is.na(RLS)), aes(x=RLS, y=Ferritin)) +
+  geom_boxplot() + 
+  theme_bw() +
+  geom_text(x = 2.3, y = 700, label=paste('Means:', "  ", means$Ferritin[1], "  ", means$Ferritin[2], "\n", 't(',res$parameter, '), p = ', round(res$p.value, 3), sep = '')) +
+  labs(x="RLS", y="Ferritin")
+
+```
+
+### Models 
+```{r}
+#| label: RLS log reg
+RLS_fitM <- glm(formula = RLS ~ Age + Weight + Height + Intervention_months_factor, data = data_scale, subset = data_scale$Gender == "Male" ,family = binomial)
+RLS_fit_preF <- glm(formula = RLS ~ Age + Weight + Height + Intervention_months_factor, data = data_scale, subset = data_scale$Gender == "Female" & data_scale$PostMeno == 0 ,family = binomial)
+RLS_fit_postF <- glm(formula = RLS ~ Age + Weight + Height + Intervention_months_factor, data = data_scale, subset = data_scale$Gender == "Female" & data_scale$PostMeno == 1 ,family = binomial)
+
+pl <- c(
+  `(Intercept)` = "Intercept",
+  Intervention_months_factor0 = "0-5 months",
+  Intervention_months_factor1 = "6-11 months",
+  Intervention_months_factor2 = "12-17 months",
+  Intervention_months_factor3 = "18-23 months",
+  Intervention_months_factor4 = "24+ months"
+)
+
+tab_model(RLS_fit_preF, RLS_fit_postF, RLS_fitM, pred.labels = pl, dv.labels = c("Pre-menopausal women", "Post-menopausal women", "Men"), show.reflvl = T, title = "Restless Legs Syndrome")
+```
+
+### Model assumptions
+
+**Premenopausal females:**
+
+```{r, warning=F, message=F, error=F}
+#| label: assumptions RLS premenopausal females
+
+plot(RLS_fit_preF, which = 4, id.n = 3)
+
+#Inspect the largest:
+model.data <- augment(RLS_fit_preF) %>% 
+  mutate(index = 1:n())
+model.data %>% top_n(3, .cooksd) #residuals not above 3, no further attention needed 
+
+#Plot standardized residuals: 
+ggplot(model.data, aes(index, .std.resid)) + 
+  geom_point(aes(color = RLS), alpha = .5) +
+  theme_bw()
+
+# Filter potential influential data point
+model.data %>% 
+  filter(abs(.std.resid) > 3) 
+
+# Plot Cook's Distance with a horizontal line at K+1/n to see which observations exceed this threshold (* 3, see Stevens, 2002)
+n <- nrow(data_scale)
+cooksd = cooks.distance(RLS_fit_preF)
+plot(cooksd, main="Cooks Distance for Influential Obs")
+abline(h = (8/n) * 3, lty = 2, col = "steelblue") # add cutoff line
+
+# influence plot
+car::influencePlot(RLS_fit_preF,col="red",id.n=3)
+car::influenceIndexPlot(RLS_fit_preF, id.n=3)
+
+# check without some outliers
+data_scale2 <- data_scale[c(-4453, -3788, -7722), ]
+RLS_fit_preF_upd1 <- update(RLS_fit_preF, data = data_scale2, subset= data_scale2$Gender == "Female" & data_scale2$PostMeno == 0)
+car::compareCoefs(RLS_fit_preF,RLS_fit_preF_upd1) # no improvement
+
+summary(RLS_fit_preF)
+summary(RLS_fit_preF_upd1)
+
+#multicollinearity
+car::vif(RLS_fit_preF) # no VIF value that exceeds 5 or 10 
+```
+
+**Postmenopausal females:**
+
+```{r, warning=F, message=F, error=F}
+#| label: assumptions RLS postmenopausal females
+
+plot(RLS_fit_postF, which = 4, id.n = 3)
+
+#Inspect the largest:
+model.data <- augment(RLS_fit_postF) %>% 
+  mutate(index = 1:n())
+model.data %>% top_n(3, .cooksd) 
+
+#Plot standardized residuals: 
+ggplot(model.data, aes(index, .std.resid)) + 
+  geom_point(aes(color = RLS), alpha = .5) +
+  theme_bw()
+
+# Filter potential influential data point
+model.data %>% 
+  filter(abs(.std.resid) > 3) 
+
+# Plot Cook's Distance with a horizontal line at K+1/n to see which observations exceed this threshold (* 3, see Stevens, 2002)
+n <- nrow(data_scale)
+cooksd = cooks.distance(RLS_fit_postF)
+plot(cooksd, main="Cooks Distance for Influential Obs")
+abline(h = (8/n) * 3, lty = 2, col = "steelblue") # add cutoff line
+
+# influence plot
+car::influencePlot(RLS_fit_postF,col="red",id.n=3)
+car::influenceIndexPlot(RLS_fit_postF, id.n=3)
+
+# check without some outliers
+data_scale2 <- data_scale[c(-3919, -4404), ]
+RLS_fit_postF_upd1 <- update(RLS_fit_postF, data = data_scale2, subset= data_scale2$Gender == "Female" & data_scale2$PostMeno == 0)
+car::compareCoefs(RLS_fit_postF,RLS_fit_postF_upd1) # no improvement
+
+#multicollinearity
+car::vif(RLS_fit_postF) # no VIF value that exceeds 5 or 10 
+```
+
+**Males:**
+```{r, warning=F, message=F, error=F}
+#| label: assumptions RLS males
+
+plot(RLS_fitM, which = 4, id.n = 3)
+
+#Inspect the largest:
+model.data <- augment(RLS_fitM) %>% 
+  mutate(index = 1:n())
+model.data %>% top_n(3, .cooksd) 
+
+#Plot standardized residuals: 
+ggplot(model.data, aes(index, .std.resid)) + 
+  geom_point(aes(color = RLS), alpha = .5) +
+  theme_bw()
+
+# Filter potential influential data point
+model.data %>% 
+  filter(abs(.std.resid) > 3) # 0 influential data points
+
+# Plot Cook's Distance with a horizontal line at K+1/n to see which observations exceed this threshold (* 3, see Stevens, 2002)
+n <- nrow(data_scale)
+cooksd = cooks.distance(RLS_fitM)
+plot(cooksd, main="Cooks Distance for Influential Obs")
+abline(h = (8/n) * 3, lty = 2, col = "steelblue") # add cutoff line
+
+# influence plot
+car::influencePlot(RLS_fitM,col="red",id.n=3)
+car::influenceIndexPlot(RLS_fitM, id.n=3)
+
+#multicollinearity
+car::vif(RLS_fitM) # no VIF value that exceeds 5 or 10 
+```
+
+## Cognitive functioning
+Scoring: https://meetinstrumentenzorg.nl/wp-content/uploads/instrumenten/CFQ-form.pdf
+
+### Predict by ferritin
+```{r, warning=F, message=F, error=F}
+#| label: investigate cognitive functioning and ferritin 
+res <- cor.test(data_scale$CFQ_Total, data_scale$Ferritin,  method = "pearson", use = "complete.obs")
+ggplot(data_scale, mapping = aes(x = CFQ_Total, y = Ferritin)) + 
+  geom_point() + 
+  theme_bw() +
+  geom_text(x = 75, y = 1000, label=paste('r(',res$parameter,') = ', round(res$estimate,3),', p = ', round(res$p.value, 3), sep = '')) +
+  labs(x="Cognitive functioning, higher is worse", y="Ferritin")
+
+# plot for cutoffs
+data_scale <- data_scale %>% mutate(Fergroup = factor(case_when(Ferritin < 15 ~ 1, Ferritin >= 15 & Ferritin <= 30~ 2, Ferritin > 30 ~ 3)) %>%  fct_recode("Ferritin < 15" = "1", "Ferritin 15-30" = "2", "Ferritin > 30" = "3"))
+
+ggplot(data_scale, aes(x=Fergroup, y=CFQ_Total)) +
+  geom_boxplot() + 
+  theme_bw() +
+  labs(x="Ferritin cut-off groups", y="Cognitive functioning, higher is worse")
+```
+
+### Models
+```{r}
+#| label: CFQ log reg
+CFQ_fitM <- lm(formula = CFQ_Total ~ Age + Weight + Height + Intervention_months_factor, data = data_scale, subset = data_scale$Gender == "Male")
+CFQ_fit_preF <- lm(formula = CFQ_Total ~ Age + Weight + Height + Intervention_months_factor, data = data_scale, subset = data_scale$Gender == "Female" & data_scale$PostMeno == 0)
+CFQ_fit_postF <- lm(formula = CFQ_Total ~ Age + Weight + Height + Intervention_months_factor, data = data_scale, subset = data_scale$Gender == "Female" & data_scale$PostMeno == 1)
+
+pl <- c(
+  `(Intercept)` = "Intercept",
+  Intervention_months_factor0 = "0-5 months",
+  Intervention_months_factor1 = "6-11 months",
+  Intervention_months_factor2 = "12-17 months",
+  Intervention_months_factor3 = "18-23 months",
+  Intervention_months_factor4 = "24+ months"
+)
+
+tab_model(CFQ_fit_preF, CFQ_fit_postF, CFQ_fitM, pred.labels = pl, dv.labels = c("Pre-menopausal women", "Post-menopausal women", "Men"), show.reflvl = T, title = "Cognitive functioning")
+```
+
+### Assumptions
+
+**Premenopausal females:**
+```{r, warning=F, message=F, error=F}
+#| label: assumptions CFQ preF
+### LINEARITY (Linearity and constant variance assumptions)
+#Fitted versus Residuals Plot: Linearity ok,  constant variance meh (heteroscedasticity)
+plot(CFQ_fit_preF, which = 1)
+
+### HOMOGEINITY OF VARIANCE
+# Display scale-location plot (also known as  spread-location plot)
+plot(CFQ_fit_preF, which = 3) # Linearity good, don't have constant variance 
+# formal test in the form of Breusch-Pagan 
+bptest(CFQ_fit_preF) # small p-value, we reject the null of homoscedasticity. The constant variance assumption is violated.
+
+### NORMALITY OF RESIDUALS
+#QQ plot
+plot(CFQ_fit_preF, 2) #suspect
+# formal test in the form of Shapiro-Wilk
+shapiro.test(resid(CFQ_fit_preF)) #fail to reject for the data sampled from normal
+
+### OUTLIERS
+#plot 3largest
+plot(CFQ_fit_preF, which = 4, id.n = 10)
+# inspect the largest
+model.data <- augment(CFQ_fit_preF) %>% 
+  mutate(index = 1:n())
+model.data %>% top_n(3, .cooksd) # residuals are above 3, does deserve closer attention
+# Plot standardized residuals
+ggplot(model.data, aes(index, .std.resid)) + 
+  geom_point(aes(color = CFQ_Total), alpha = .5) +
+  theme_bw()
+# Filter potential influential data point
+model.data %>% 
+  filter(abs(.std.resid) > 3) # some influential data points
+#Cook's distance
+cooksd = cooks.distance(CFQ_fit_preF)
+# Plot Cook's Distance with a horizontal line at K+1/n to see which observations
+#exceed this threshold
+n <- nrow(data_scale)
+plot(cooksd, main = "Cooks Distance for Influential Obs")
+abline(h = (8/n) * 3, lty = 2, col = "steelblue") # add cutoff line
+
+# (log) transform to pass normality. 
+data_scale2 <- data_scale
+data_scale2$CFQ_Total <- log(data_scale2$CFQ_Total)
+table(data_scale2$CFQ_Total)
+data_scale2[data_scale2 <= -Inf ] <- NA  # Replace -Inf with NA
+table(data_scale2$CFQ_Total)
+CFQFfactor_fix <- lm(CFQ_Total~ Age + Weight + Height + as.factor(Intervention_months_factor), 
+                     data = data_scale2, 
+                     subset = data_scale2$Gender == "Female" & data_scale2$PostMeno == 0)
+
+qqnorm(resid(CFQFfactor_fix), col = "grey")
+qqline(resid(CFQFfactor_fix), col = "dodgerblue", lwd = 2)
+shapiro.test(resid(CFQFfactor_fix))
+## Transforming does not seem to help. Many outliers. Solution -> robust regression, see below.
+
+#multicollinearity
+car::vif(CFQ_fit_preF) # no VIF value that exceeds 5 or 10 
+
+```
+
+**Postmenopausal females:**
+```{r, warning=F, message=F, error=F}
+#| label: assumptions CFQ postF
+#### FEMALE post
+### LINEARITY (Linearity and constant variance assumptions)
+#Fitted versus Residuals Plot: Linearity good,  constant variance looks good (heteroscedasticity)
+plot(CFQ_fit_postF, which = 1)
+
+### HOMOGEINITY OF VARIANCE
+# Display scale-location plot, also known as the spread-location plot
+plot(CFQ_fit_postF, which = 3) # Linearity good, constant variance 
+# formal test in the form of Breusch-Pagan 
+bptest(CFQ_fit_postF) # we fail to reject the null of homoscedasticity. The constant variance assumption is not violated.
+
+### NORMALITY OF RESIDUALS
+#QQ plot
+plot(CFQ_fit_postF, 2) #suspect
+# formal test in the form of Shapiro-Wilk
+shapiro.test(resid(CFQ_fit_postF)) #fail to reject for the data sampled from normal
+
+### OUTLIERS
+#plot 3largest
+plot(CFQ_fit_postF, which = 4, id.n = 3)
+# inspect the largest
+model.data <- augment(CFQ_fit_postF) %>% 
+  mutate(index = 1:n())
+model.data %>% top_n(3, .cooksd) # residuals are above 3, does deserve closer attention
+# Plot standardized residuals
+ggplot(model.data, aes(index, .std.resid)) + 
+  geom_point(aes(color = CFQ_Total), alpha = .5) +
+  theme_bw()
+# Filter potential influential data point
+model.data %>% 
+  filter(abs(.std.resid) > 3) # some influential data points
+#Cook's distance
+cooksd = cooks.distance(CFQ_fit_postF)
+# Plot Cook's Distance with a horizontal line at K+1/n to see which observations
+#exceed this threshold
+n <- nrow(data_scale)
+plot(cooksd, main = "Cooks Distance for Influential Obs")
+abline(h = (8/n) * 3, lty = 2, col = "steelblue") # add cutoff line
+
+# log transform to pass normality. 
+CFQ_postF_factor_fix <- lm(CFQ_Total~ Age + Weight + Height + as.factor(Intervention_months_factor), 
+                     data = data_scale2, 
+                     subset = data_scale2$Gender == "Female" & data_scale2$PostMeno == 1)
+
+qqnorm(resid(CFQ_postF_factor_fix), col = "grey")
+qqline(resid(CFQ_postF_factor_fix), col = "dodgerblue", lwd = 2)
+shapiro.test(resid(CFQ_postF_factor_fix))
+
+## Transforming does not seem to help. Many outliers. Solution -> robust regression, see chunk below.
+
+#multicollinearity
+car::vif(CFQ_fit_postF) # no VIF value that exceeds 5 or 10 
+
+```
+
+**Males:**
+
+```{r, warning=F, message=F, error=F}
+#| label: assumptions CFQ males
+### MALE
+### LINEARITY (Lnearity and constant variance assumptions)
+#Fitted versus Residuals Plot: Good
+plot(CFQ_fitM, which = 1)      
+
+### HOMOGEINITY OF VARIANCE
+# Display scale-location plot, also known as the spread-location plot
+plot(CFQ_fitM, which = 3) # weird pattern below
+# formal test in the form of Breusch-Pagan 
+bptest(CFQ_fitM)# small p-value, so we reject the null of homoscedasticity. The constant variance assumption is violated.
+### NORMALITY OF RESIDUALS
+#QQ plot
+plot(CFQ_fitM, 2) # suspect
+# formal test in the form of Shapiro-Wilk
+shapiro.test(resid(CFQ_fitM)) #fail to reject for the data sampled from normal
+
+### OUTLIERS
+#plot 3largest
+plot(CFQ_fitM, which = 4, id.n = 3)
+# inspect the largest
+model.data <- augment(CFQ_fitM) %>% 
+  mutate(index = 1:n())
+model.data %>% top_n(3, .cooksd) # residuals are above 3, does deserve closer attention
+# Plot standardized residuals
+ggplot(model.data, aes(index, .std.resid)) + 
+  geom_point(aes(color = CFQ_Total), alpha = .5) +
+  theme_bw()
+# Filter potential influential data point
+model.data %>% 
+  filter(abs(.std.resid) > 3) # some influential data points
+#Cook's distance
+cooksd = cooks.distance(CFQ_fitM)
+# Plot Cook's Distance with a horizontal line at K+1/n to see which observations
+#exceed this threshold
+n <- nrow(data_scale)
+plot(cooksd, main = "Cooks Distance for Influential Obs")
+abline(h = (8/n) * 3, lty = 2, col = "steelblue") # add cutoff line
+
+# log transform to pass normality. 
+CFQMfactor_fix <- lm(CFQ_Total~ Age + Weight + Height + as.factor(Intervention_months_factor), 
+                     data = data_scale2, 
+                     subset = data_scale2$Gender == "Male")
+
+qqnorm(resid(CFQMfactor_fix), col = "grey")
+qqline(resid(CFQMfactor_fix), col = "dodgerblue", lwd = 2)
+shapiro.test(resid(CFQMfactor_fix))
+
+## Transforming does not seem to help. Many outliers. Solution -> robust regression, see chunk below.
+
+#multicollinearity
+car::vif(CFQ_fitM) # no VIF value that exceeds 5 or 10 
+```
+::: {.callout-note appearance="default"}
+### Decision
+
+We conclude that the assumptions were violated and thus we use robust models.
+:::
+
+### Robust models
+
+```{r}
+#| label: robust models CFQ
+
+CFQ_preF_robust <- lmrob(CFQ_Total ~ Age + Weight + Height + as.factor(Intervention_months_factor), data = data_scale, subset = data_scale$Gender == "Female" & data_scale$PostMeno == 0)
+CFQ_postF_robust <- lmrob(CFQ_Total ~ Age + Weight + Height + as.factor(Intervention_months_factor), data = data_scale, subset = data_scale$Gender == "Female" & data_scale$PostMeno == 1)
+CFQ_M_robust <- lmrob(CFQ_Total ~ Age + Weight + Height + as.factor(Intervention_months_factor), data = data_scale, subset = data_scale$Gender == "Male")
+
+
+pl <- c(
+  `(Intercept)` = "Intercept",
+  `as.factor(Intervention_months_factor)1` = "6-12 months",
+  `as.factor(Intervention_months_factor)2` = "12-18 months",
+  `as.factor(Intervention_months_factor)3` = "18-24 months",
+  `as.factor(Intervention_months_factor)4` = "24+ months"
+  
+)
+
+tab_model(CFQ_preF_robust, CFQ_postF_robust, CFQ_M_robust, pred.labels = pl, dv.labels = c("Pre-menopausal women", "Post-menopausal women", "Men"), show.reflvl = T, title = "Cognitive functioning, higher means more cognitive failure", digits = 3)
+
+```
+
+## Physical health
+
+Scored by https://meetinstrumentenzorg.nl/wp-content/uploads/instrumenten/SF-36-RAND-36-form.pdf
+
+### Predict by ferritin
+```{r, warning=F, message=F, error=F}
+#| label: investigate physical health and ferritin
+res <- cor.test(data_scale$SF_ph, data_scale$Ferritin,  method = "pearson", use = "complete.obs")
+ggplot(data_scale, mapping = aes(x = SF_ph, y = Ferritin)) + 
+  geom_point() + 
+  theme_bw() +
+  geom_text(x = 75, y = 1000, label=paste('r(',res$parameter,') = ', round(res$estimate,3),', p = ', round(res$p.value, 3), sep = '')) +
+  labs(x="Physical health (SF-36), higher is better", y="Ferritin")
+  
+# plot for cutoffs
+data_scale <- data_scale %>% mutate(Fergroup = factor(case_when(Ferritin < 15 ~ 1, Ferritin >= 15 & Ferritin <= 30~ 2, Ferritin > 30 ~ 3)) %>%  fct_recode("Ferritin < 15" = "1", "Ferritin 15-30" = "2", "Ferritin > 30" = "3"))
+
+ggplot(data_scale, aes(x=Fergroup, y=SF_ph)) +
+  geom_boxplot() + 
+  theme_bw() +
+  labs(x="Ferritin cut-off groups", y="Physical health (SF-36), higher is better")
+```
+
+### Models
+
+```{r}
+#| label: physical health lin reg
+SF_ph_preF <- lm(SF_ph ~ Age + Weight + Height + as.factor(Intervention_months_factor), data = data_scale, subset  = data_scale$Gender == "Female" & data_scale$PostMeno == 0)
+SF_ph_postF <- lm(SF_ph ~ Age + Weight + Height + as.factor(Intervention_months_factor), data = data_scale,  subset = data_scale$Gender == "Female" & data_scale$PostMeno == 1)
+SF_ph_M <- lm(SF_ph ~ Age + Weight + Height + as.factor(Intervention_months_factor), data = data_scale,  subset = data_scale$Gender == "Male")
+
+pl <- c(
+  `(Intercept)` = "Intercept",
+  `as.factor(Intervention_months_factor)1` = "6-12 months",
+  `as.factor(Intervention_months_factor)2` = "12-18 months",
+  `as.factor(Intervention_months_factor)3` = "18-24 months",
+  `as.factor(Intervention_months_factor)4` = "24+ months"
+  
+)
+
+
+tab_model(SF_ph_preF, SF_ph_postF, SF_ph_M, pred.labels = pl, dv.labels = c("Pre-menopausal women", "Post-menopausal women", "Men"), title = "Physical health (Sf-36), higher score indicates better health", show.reflvl = T, digits=3)
+```
+
+### Assumptions
+**Premenopausal females:**
+```{r, warning=F, message=F, error=F}
+#| label: assumptions physical health preF
+### LINEARITY (Linearity and constant variance assumptions)
+#Fitted versus Residuals Plot: Linearity bad,  constant variance meh (heteroscedasticity)
+plot(SF_ph_preF,  which = 1)
+
+### HOMOGEINITY OF VARIANCE
+# Display scale-location plot (also known as  spread-location plot)
+plot(SF_ph_preF, which = 3) # Linearity bad, constant variance meh 
+# formal test in the form of Breusch-Pagan 
+bptest(SF_ph_preF) # small p-value, we reject the null of homoscedasticity. The constant variance assumption is violated.
+
+### NORMALITY OF RESIDUALS
+#QQ plot
+plot(SF_ph_preF, 2) #suspect
+# formal test in the form of Shapiro-Wilk
+shapiro.test(resid(SF_ph_preF)) #reject  the data sampled from normal
+
+
+### OUTLIERS
+#plot 3largest
+plot(SF_ph_preF,  which = 4, id.n = 3)
+# inspect the largest
+model.data <- augment(SF_ph_preF) %>% 
+  mutate(index = 1:n())
+model.data %>% top_n(3, .cooksd) # residuals are above 3, does deserve closer attention
+# Plot standardized residuals
+ggplot(model.data, aes(index, .std.resid)) + 
+  geom_point(aes(color = SF_ph), alpha = .5) +
+  theme_bw()
+# Filter potential influential data point
+model.data %>% 
+  filter(abs(.std.resid) > 4) # some influential data points
+#Cook's distance
+cooksd = cooks.distance(SF_ph_preF)
+# Plot Cook's Distance with a horizontal line at K+1/n to see which observations
+#exceed this threshold
+n <- nrow(data_scale)
+plot(cooksd, main = "Cooks Distance for Influential Obs")
+abline(h = (8/n) * 3, lty = 2, col = "steelblue") # add cutoff line
+
+# log transform to pass normality. 
+data_scale2 <- data_scale
+table(data_scale2$SF_ph)
+data_scale2$SF_ph <- log10(data_scale$SF_ph)
+table(data_scale2$SF_ph)
+
+SF_ph_preF_factor_fix <- lm(SF_ph ~ Age + Weight + Height + as.factor(Intervention_months_factor), 
+                     data = data_scale2, 
+                     subset = data_scale2$Gender == "Female" & data_scale2$PostMeno == 0)
+
+qqnorm(resid(SF_ph_preF_factor_fix), col = "grey")
+qqline(resid(SF_ph_preF_factor_fix), col = "dodgerblue", lwd = 2)
+shapiro.test(resid(SF_ph_preF_factor_fix))
+
+## Transforming does not seem to help. Many outliers. Solution -> robust regression, see chunk below.
+
+#multicollinearity
+car::vif(SF_ph_preF) # no VIF value that exceeds 5 or 10 
+```
+
+**Postmenopausal females:**
+```{r, warning=F, message=F, error=F}
+#| label: assumptions physical health PostF
+### LINEARITY (Linearity and constant variance assumptions)
+#Fitted versus Residuals Plot: Linearity bad,  constant variance looks bad (heteroscedasticity)
+plot(SF_ph_postF, which = 1)
+
+### HOMOGEINITY OF VARIANCE
+# Display scale-location plot, also known as the spread-location plot
+plot(SF_ph_postF, which = 3) # Linearity bad, constant variance bad
+# formal test in the form of Breusch-Pagan 
+bptest(SF_ph_postF) #  reject the null of homoscedasticity. The constant variance assumption is violated.
+
+### NORMALITY OF RESIDUALS
+#QQ plot
+plot(SF_ph_postF, 2) #suspect
+# formal test in the form of Shapiro-Wilk
+shapiro.test(resid(SF_ph_postF)) #reject for the data sampled from normal
+
+### OUTLIERS
+#plot 3largest
+plot(SF_ph_postF, which = 4, id.n = 3)
+# inspect the largest
+model.data <- augment(SF_ph_postF) %>% 
+  mutate(index = 1:n())
+model.data %>% top_n(3, .cooksd) # residuals are above 3, does deserve closer attention
+# Plot standardized residuals
+ggplot(model.data, aes(index, .std.resid)) + 
+  geom_point(aes(color = SF_ph), alpha = .5) +
+  theme_bw()
+# Filter potential influential data point
+model.data %>% 
+  filter(abs(.std.resid) > 4) # some influential data points
+#Cook's distance
+cooksd = cooks.distance(SF_ph_postF)
+# Plot Cook's Distance with a horizontal line at K+1/n to see which observations
+#exceed this threshold
+n <- nrow(data_scale)
+plot(cooksd, main = "Cooks Distance for Influential Obs")
+abline(h = (8/n) * 3, lty = 2, col = "steelblue") # add cutoff line
+
+# log transform to pass normality. 
+SF_ph_postF_factor_fix <- lm(SF_ph ~ Age + Weight + Height + as.factor(Intervention_months_factor), 
+                     data = data_scale2, 
+                     subset = data_scale2$Gender == "Female" & data_scale2$PostMeno == 1)
+
+qqnorm(resid(SF_ph_postF_factor_fix), col = "grey")
+qqline(resid(SF_ph_postF_factor_fix), col = "dodgerblue", lwd = 2)
+shapiro.test(resid(SF_ph_postF_factor_fix))
+
+## Transforming does not seem to help. Many outliers. Solution -> robust regression, see chunk below.
+
+#multicollinearity
+car::vif(SF_ph_postF) # no VIF value that exceeds 5 or 10 
+
+```
+**Males:**
+```{r}
+#| label: assumptions physical health males
+### LINEARITY (Lnearity and constant variance assumptions)
+#Fitted versus Residuals Plot: Bad
+plot(SF_ph_M, which = 1)      
+
+### HOMOGEINITY OF VARIANCE
+# Display scale-location plot, also known as the spread-location plot
+plot(SF_ph_M, which = 3) # suspect
+# formal test in the form of Breusch-Pagan 
+bptest(SF_ph_M)# small p-value, so we reject the null of homoscedasticity. The constant variance assumption is violated.
+### NORMALITY OF RESIDUALS
+#QQ plot
+plot(SF_ph_M, 2) # suspect
+# formal test in the form of Shapiro-Wilk
+shapiro.test(resid(SF_ph_M)) # reject for the data sampled from normal
+
+### OUTLIERS
+#plot 3largest
+plot(SF_ph_M, which = 4, id.n = 3)
+# inspect the largest
+model.data <- augment(SF_ph_M) %>% 
+  mutate(index = 1:n())
+model.data %>% top_n(3, .cooksd) # residuals are above 3, does deserve closer attention
+# Plot standardized residuals
+ggplot(model.data, aes(index, .std.resid)) + 
+  geom_point(aes(color = SF_ph), alpha = .5) +
+  theme_bw()
+# Filter potential influential data point
+model.data %>% 
+  filter(abs(.std.resid) > 3) # some influential data points
+#Cook's distance
+cooksd = cooks.distance(SF_ph_M)
+# Plot Cook's Distance with a horizontal line at K+1/n to see which observations
+#exceed this threshold
+n <- nrow(data_scale)
+plot(cooksd, main = "Cooks Distance for Influential Obs")
+abline(h = (8/n) * 3, lty = 2, col = "steelblue") # add cutoff line
+
+# log transform to pass normality. 
+SF_ph_Mfactor_fix <- lm(SF_ph~ Age + Weight + Height + as.factor(Intervention_months_factor), 
+                     data = data_scale2, 
+                     subset = data_scale2$Gender == "Female" & data_scale2$PostMeno == 1)
+
+qqnorm(resid(SF_ph_Mfactor_fix), col = "grey")
+qqline(resid(SF_ph_Mfactor_fix), col = "dodgerblue", lwd = 2)
+shapiro.test(resid(SF_ph_Mfactor_fix))
+
+## Transforming does not seem to help. Many outliers. Solution -> robust regression, see chunk below.
+
+#multicollinearity
+car::vif(SF_ph_M) # no VIF value that exceeds 5 or 10 
+```
+::: {.callout-note appearance="default"}
+### Decision
+
+We conclude that the assumptions were violated and thus we use robust models.
+:::
+
+### Robust models
+```{r}
+#| label: robust models physical health
+SF_ph_preF_robust <- lmrob(SF_ph ~ Age + Weight + Height + as.factor(Intervention_months_factor), data = data_scale, subset  = data_scale$Gender == "Female" & data_scale$PostMeno == 0)
+SF_ph_postF_robust <- lmrob(SF_ph ~ Age + Weight + Height + as.factor(Intervention_months_factor), data = data_scale,  subset = data_scale$Gender == "Female" & data_scale$PostMeno == 1)
+SF_ph_Mrobust <- lmrob(SF_ph ~ Age + Weight + Height + as.factor(Intervention_months_factor), data = data_scale, subset = data_scale$Gender == "Male")
+
+pl <- c(
+  `(Intercept)` = "Intercept",
+  `as.factor(Intervention_months_factor)1` = "6-12 months",
+  `as.factor(Intervention_months_factor)2` = "12-18 months",
+  `as.factor(Intervention_months_factor)3` = "18-24 months",
+  `as.factor(Intervention_months_factor)4` = "24+ months"
+  
+)
+
+tab_model(SF_ph_preF_robust, SF_ph_postF_robust, SF_ph_Mrobust, pred.labels = pl, dv.labels = c("Pre-menopausal women", "Post-menopausal women", "Men"), show.reflvl = T, title = "Physical health (Sf-36), higher score indicates better health (robust regression)", digits = 3)
+```
+
+## Mental health
+Coded using https://meetinstrumentenzorg.nl/wp-content/uploads/instrumenten/SF-36-RAND-36-form.pdf 
+
+### Predict by ferritin
+```{r, warning=F, message=F, error=F}
+#| label: investigate ferritin and mental health
+res <- cor.test(data_scale$SF_mh, data_scale$Ferritin,  method = "pearson", use = "complete.obs")
+ggplot(data_scale, mapping = aes(x = SF_ph, y = Ferritin)) + 
+  geom_point() + 
+  theme_bw() +
+  geom_text(x = 75, y = 1000, label=paste('r(',res$parameter,') = ', round(res$estimate,3),', p = ', round(res$p.value, 3), sep = '')) +
+  labs(x="Mental health (SF-36), higher is better", y="Ferritin")
+
+# plot for cutoffs
+data_scale <- data_scale %>% mutate(Fergroup = factor(case_when(Ferritin < 15 ~ 1, Ferritin >= 15 & Ferritin <= 30~ 2, Ferritin > 30 ~ 3)) %>%  fct_recode("Ferritin < 15" = "1", "Ferritin 15-30" = "2", "Ferritin > 30" = "3"))
+
+ggplot(data_scale, aes(x=Fergroup, y=SF_mh)) +
+  geom_boxplot() + 
+  theme_bw() +
+  labs(x="Ferritin cut-off groups", y="Mental health (SF-36), higher is better")
+```
+
+### Models
+
+```{r}
+#| label: models mental health
+SF_mh_preF<- lm(SF_mh ~ Age + Weight + Height + as.factor(Intervention_months_factor) , data = data_scale, subset  = data_scale$Gender == "Female" & data_scale$PostMeno == 0)
+SF_mh_postF <- lm(SF_mh ~ Age + Weight + Height + as.factor(Intervention_months_factor) , data = data_scale, subset = data_scale$Gender == "Female" & data_scale$PostMeno == 1)
+SF_mh_M <- lm(SF_mh ~ Age + Weight + Height + as.factor(Intervention_months_factor), data = data_scale, subset = data_scale$Gender == "Male")
+
+pl <- c(
+  `(Intercept)` = "Intercept",
+  `as.factor(Intervention_months_factor)1` = "6-12 months",
+  `as.factor(Intervention_months_factor)2` = "12-18 months",
+  `as.factor(Intervention_months_factor)3` = "18-24 months",
+  `as.factor(Intervention_months_factor)4` = "24+ months"
+  
+)
+
+
+tab_model(SF_mh_preF, SF_mh_postF, SF_mh_M, pred.labels = pl, dv.labels = c("Pre-menopausal women", "Post-menopausal women", "Men"), title = "Mental health (Sf-36), higher score indicates better health", show.reflvl = T, digits=3)
+```
+
+### Assumptions
+
+**Premenopausal females:**
+```{r, warning=F, message=F, error=F}
+#| label: assumptions mh preF
+### LINEARITY (Linearity and constant variance assumptions)
+#Fitted versus Residuals Plot: Linearity bad,  constant variance meh (heteroscedasticity)
+plot(SF_mh_preF,  which = 1)
+
+### HOMOGEINITY OF VARIANCE
+# Display scale-location plot (also known as  spread-location plot)
+plot(SF_mh_preF, which = 3) # Linearity bad, constant variance meh
+# formal test in the form of Breusch-Pagan 
+bptest(SF_mh_preF) # reject the null of homoscedasticity. The constant variance assumption is  violated.
+
+### NORMALITY OF RESIDUALS
+#QQ plot
+plot(SF_mh_preF , 2) #suspect
+# formal test in the form of Shapiro-Wilk
+shapiro.test(resid(SF_mh_preF)) #reject  the data sampled from normal
+
+
+### OUTLIERS
+#plot 3largest
+plot(SF_mh_preF,  which = 4, id.n = 3)
+# inspect the largest
+model.data <- augment(SF_mh_preF) %>% 
+  mutate(index = 1:n())
+model.data %>% top_n(3, .cooksd) # residuals are above 3, does deserve closer attention
+# Plot standardized residuals
+ggplot(model.data, aes(index, .std.resid)) + 
+  geom_point(aes(color = SF_mh), almha = .5) +
+  theme_bw()
+# Filter potential influential data point
+model.data %>% 
+  filter(abs(.std.resid) > 4) # some influential data points
+#Cook's distance
+cooksd = cooks.distance(SF_mh_preF)
+# Plot Cook's Distance with a horizontal line at K+1/n to see which observations exceed this threshold (* 3, see Stevens, 2002)
+n <- nrow(data_scale)
+plot(cooksd, main = "Cooks Distance for Influential Obs")
+abline(h = (8/n) * 3, lty = 2, col = "steelblue") # add cutoff line
+
+
+# log transform to pass normality. 
+data_scale2 <- data_scale
+table(data_scale2$SF_mh)
+
+data_scale2$SF_mh <- log(data_scale$SF_mh)
+table(data_scale2$SF_mh)
+
+SF_mh_preF_factor_log<-lm(log(SF_mh) ~ Age + Weight + Height + as.factor(Intervention_months_factor), 
+                     data = data_scale, 
+                     subset = data_scale$Gender == "Female" & data_scale$PostMeno == 0)
+
+plot(SF_mh_preF_factor_log, 2)
+shapiro.test(resid(SF_mh_preF_factor_log))
+
+
+## Transforming does not seem to help. Many outliers. Solution -> robust regression, see chunk below.
+
+#multicollinearity
+car::vif(SF_mh_preF) # no VIF value that exceeds 5 or 10 
+
+```
+
+**Postmenopausal females:**
+```{r, warning=F, message=F, error=F}
+#| label: assumptions mh postF
+#### FEMALE post
+### LINEARITY (Linearity and constant variance assumptions)
+#Fitted versus Residuals Plot: Linearity bad,  constant variance looks bad (heteroscedasticity)
+plot(SF_mh_postF, which = 1)
+
+### HOMOGEINITY OF VARIANCE
+# Display scale-location plot, also known as the spread-location plot
+plot(SF_mh_postF, which = 3) # Linearity bad, constant variance bad
+# formal test in the form of Breusch-Pagan 
+bptest(SF_mh_postF) #  reject the null of homoscedasticity. The constant variance assumption is violated.
+
+### NORMALITY OF RESIDUALS
+#QQ plot
+plot(SF_mh_postF, 2) #suspect
+# formal test in the form of Shapiro-Wilk
+shapiro.test(resid(SF_mh_postF)) #reject for the data sampled from normal
+
+### OUTLIERS
+#plot 3largest
+plot(SF_mh_postF, which = 4, id.n = 3)
+# inspect the largest
+model.data <- augment(SF_mh_postF) %>% 
+  mutate(index = 1:n())
+model.data %>% top_n(3, .cooksd) # residuals are above 3, does deserve closer attention
+# Plot standardized residuals
+ggplot(model.data, aes(index, .std.resid)) + 
+  geom_point(aes(color = SF_mh), almha = .5) +
+  theme_bw()
+# Filter potential influential data point
+model.data %>% 
+  filter(abs(.std.resid) > 4) # some influential data points
+#Cook's distance
+cooksd = cooks.distance(SF_mh_postF)
+# Plot Cook's Distance with a horizontal line at K+1/n to see which observations exceed this threshold (* 3, see Stevens, 2002)
+n <- nrow(data_scale)
+plot(cooksd, main = "Cooks Distance for Influential Obs")
+
+# log transform to pass normality. 
+SF_mh_postF_factor_fix <- lm(log1p(SF_mh) ~  log1p(Age) +  log1p(Weight) +  log1p(Height) + Intervention_months_factor, 
+                     data = data_scale, 
+                     subset = data_scale$Gender == "Female" & data_scale$PostMeno == 1)
+
+qqnorm(resid(SF_mh_postF_factor_fix), col = "grey")
+qqline(resid(SF_mh_postF_factor_fix), col = "dodgerblue", lwd = 2)
+shapiro.test(resid(SF_mh_postF_factor_fix))
+
+
+## Transforming does not seem to help. Many outliers. Solution -> robust regression, see chunk below.
+
+#multicollinearity
+car::vif(SF_mh_postF) # no VIF value that exceeds 5 or 10 
+
+```
+**Males:**
+```{r, warning=F, message=F, error=F}
+#| label: assumptions mh males
+
+### MALE
+### LINEARITY (Lnearity and constant variance assumptions)
+#Fitted versus Residuals Plot: Good
+plot(SF_mh_M, which = 1)      
+
+### HOMOGEINITY OF VARIANCE
+# Display scale-location plot, also known as the spread-location plot
+plot(SF_mh_M, which = 3) # suspect
+# formal test in the form of Breusch-Pagan 
+bptest(SF_mh_M)# small p-value, so we reject the null of homoscedasticity. The constant variance assumption is violated.
+### NORMALITY OF RESIDUALS
+#QQ plot
+plot(SF_mh_M, 2) # suspect
+# formal test in the form of Shapiro-Wilk
+shapiro.test(resid(SF_mh_M)) # reject for the data sampled from normal
+
+### OUTLIERS
+#plot 3largest
+plot(SF_mh_M, which = 4, id.n = 3)
+# inspect the largest
+model.data <- augment(SF_mh_M) %>% 
+  mutate(index = 1:n())
+model.data %>% top_n(3, .cooksd) # residuals are above 3, does deserve closer attention
+# Plot standardized residuals
+ggplot(model.data, aes(index, .std.resid)) + 
+  geom_point(aes(color = SF_mh), almha = .5) +
+  theme_bw()
+# Filter potential influential data point
+model.data %>% 
+  filter(abs(.std.resid) > 3) # some influential data points
+#Cook's distance
+cooksd = cooks.distance(SF_mh_M)
+# Plot Cook's Distance with a horizontal line at K+1/n to see which observations exceed this threshold (* 3, see Stevens, 2002)
+n <- nrow(data_scale)
+plot(cooksd, main = "Cooks Distance for Influential Obs")
+abline(h = (8/n) * 3, lty = 2, col = "steelblue") # add cutoff line
+
+# log transform to pass normality. 
+SF_mh_Mfactor_fix <- lm(SF_mh~ Age + Weight + Height + as.factor(Intervention_months_factor), 
+                     data = data_scale2, 
+                     subset = data_scale2$Gender == "Female" & data_scale2$PostMeno == 1)
+
+qqnorm(resid(SF_mh_Mfactor_fix), col = "grey")
+qqline(resid(SF_mh_Mfactor_fix), col = "dodgerblue", lwd = 2)
+shapiro.test(resid(SF_mh_Mfactor_fix))
+
+
+## Transforming does not seem to help. Many outliers. Solution -> robust regression, see chunk below.
+
+
+#multicollinearity
+car::vif(SF_mh_M) # no VIF value that exceeds 5 or 10 
+```
+::: {.callout-note appearance="default"}
+### Decision
+
+We conclude that the assumptions were violated and thus we use robust models.
+::: 
+
+### Robust models
+
+```{r}
+#| label: robust models mh
+SF_mh_preF_robust <- lmrob(SF_mh ~ Age + Weight + Height + as.factor(Intervention_months_factor) , data = data_scale, subset  = data_scale$Gender == "Female" & data_scale$PostMeno == 0)
+SF_mh_postF_robust <- lmrob(SF_mh ~ Age + Weight + Height + as.factor(Intervention_months_factor) , data = data_scale, subset = data_scale$Gender == "Female" & data_scale$PostMeno == 1)
+SF_mh_Mrobust <- lmrob(SF_mh ~ Age + Weight + Height + as.factor(Intervention_months_factor), data = data_scale, subset = data_scale$Gender == "Male")
+
+
+pl <- c(
+  `(Intercept)` = "Intercept",
+  `as.factor(Intervention_months_factor)1` = "6-12 months",
+  `as.factor(Intervention_months_factor)2` = "12-18 months",
+  `as.factor(Intervention_months_factor)3` = "18-24 months",
+  `as.factor(Intervention_months_factor)4` = "24+ months"
+  
+)
+
+
+tab_model(SF_mh_preF_robust, SF_mh_postF_robust, SF_mh_Mrobust, pred.labels = pl, dv.labels = c("Pre-menopausal women", "Post-menopausal women", "Men"), title = "Robust: Mental health (Sf-36), higher score indicates better health", show.reflvl = T)
+
+```
+
+## Warm glow
+Warm glow is defined by a score of >= 6 on average on warm glow questions (3 questions).
+
+### Predict by ferritin
+```{r, warning=F, message=F, error=F}
+#| label: investigate warm glow and ferritin
+# Barplot
+data_scale_per2 <- data_scale %>%
+ group_by(Fergroup) %>% 
+  count(Warmglow) %>%
+  mutate(
+    Percentage = round(proportions(n) * 100, 1),
+    res = str_c(n, "(", Percentage, ")%")
+    )
+
+ggplot(subset(data_scale_per2, !is.na(Warmglow)), aes(Fergroup, Percentage, fill = Warmglow)) +
+  geom_col(position = "dodge") + 
+  geom_text(aes(label = res), vjust = -0.2)+ 
+  theme_bw()
+
+ggplot(data_scale , mapping = aes(x = Fergroup, fill = Warmglow)) +
+  geom_bar(position = "dodge") + 
+  theme_bw()
+
+# t-test + boxplot
+res <- t.test(Ferritin ~ Warmglow, data = data_scale, var.equal = TRUE)
+res
+
+ggplot(subset(data_scale, !is.na(Warmglow)), aes(x=Warmglow, y=Ferritin)) +
+  geom_boxplot() + 
+  theme_bw() +
+  geom_text(x = 2.3, y = 700, label=paste('Means:', "  ", means$Ferritin[1], "  ", means$Ferritin[2], "\n", 't(',res$parameter, '), p = ', round(res$p.value, 3), sep = '')) +
+  labs(x="Warm glow", y="Ferritin")
+  
+```
+
+### Models
+```{r}
+#| label: models warm glow
+WG_preF <- glm(Warmglow ~ Age + Weight + Height + Intervention_months_factor , data = data_scale, subset = data_scale$Gender == "Female" & data_scale$PostMeno == 0,family = binomial)
+WG_postF <- glm(Warmglow ~ Age + Weight + Height + Intervention_months_factor , data = data_scale, subset = data_scale$Gender == "Female" & data_scale$PostMeno == 1,family = binomial)
+WG_M <- glm(Warmglow ~ Age + Weight + Height + Intervention_months_factor , data = data_scale, subset = data_scale$Gender == "Male" ,family = binomial)
+
+pl <- c(
+  `(Intercept)` = "Intercept",
+  `as.factor(Intervention_months_factor)1` = "6-12 months",
+  `as.factor(Intervention_months_factor)2` = "12-18 months",
+  `as.factor(Intervention_months_factor)3` = "18-24 months",
+  `as.factor(Intervention_months_factor)4` = "24+ months"
+  
+)
+
+tab_model(WG_preF, WG_postF, WG_M, pred.labels = pl, dv.labels = c("Pre-menopausal women", "Post-menopausal women", "Men"), title = "Warmglow, yes/no", show.reflvl = T)
+```
+
+### Assumptions
+**Premenopausal females:**
+```{r, warning=F, message=F, error=F}
+#| label: warm glow assumptions preF
+### OUTLIERS
+#Cook's distance
+#plot 3largest
+plot(WG_preF, which = 4, id.n = 3)
+# inspect the largest
+model.data <- augment(WG_preF) %>% 
+  mutate(index = 1:n())
+model.data %>% top_n(3, .cooksd) # residuals not above 3, does not deserve closer attention
+
+
+# Plot Cook's Distance with a horizontal line at K+1/n to see which observations exceed this threshold (* 3, see Stevens, 2002)
+cooksd = cooks.distance(WG_preF)
+n <- nrow(data_scale)
+plot(cooksd, main = "Cooks Distance for Influential Obs")
+abline(h = (8/n) * 3, lty = 2, col = "steelblue") # add cutoff line
+
+# infleunce plot
+car::influencePlot(WG_preF,col="red",id.n=3)
+car::influenceIndexPlot(WG_preF, id.n=3)
+
+#multicollinearity
+car::vif(WG_preF) # no VIF value that exceeds 5 or 10 
+```
+
+**Postmenopausal females:**
+```{r, warning=F, message=F, error=F}
+#| label: warm glow postF
+### OUTLIERS
+#Cook's distance
+#plot 3largest
+plot(WG_postF, which = 4, id.n = 3)
+# inspect the largest
+model.data <- augment(WG_postF) %>% 
+  mutate(index = 1:n())
+model.data %>% top_n(3, .cooksd) # residuals not above 3, does not deserve closer attention
+
+#Cook's distance
+cooksd = cooks.distance(WG_postF)
+# Plot Cook's Distance with a horizontal line at K+1/n to see which observations exceed this threshold (* 3, see Stevens, 2002)
+n <- nrow(data_scale)
+plot(cooksd, main = "Cooks Distance for Influential Obs")
+abline(h = (8/n) * 3, lty = 2, col = "steelblue") # add cutoff line
+
+# infleunce plot
+car::influencePlot(WG_postF,col="red",id.n=3)
+car::influenceIndexPlot(WG_postF, id.n=3)
+
+
+#multicollinearity
+car::vif(WG_postF) # no VIF value that exceeds 5 or 10 
+```
+
+```{r, warning=F, message=F, error=F}
+#| label: assumptions wg males
+### OUTLIERS
+#Cook's distance
+#plot 3largest
+plot(WG_M, which = 4, id.n = 3)
+# inspect the largest
+model.data <- augment(WG_M) %>% 
+  mutate(index = 1:n())
+model.data %>% top_n(3, .cooksd) # residuals not above 3, does not deserve closer attention
+
+# Plot standardized residuals
+ggplot(model.data, aes(index, .std.resid)) + 
+  geom_point(aes(color = Warmglow), alpha = .5) +
+  theme_bw()
+
+# Filter potential influential data point
+model.data %>% 
+  filter(abs(.std.resid) > 3) # see zero influential data points
+
+#Cook's distance
+cooksd = cooks.distance(WG_M)
+# Plot Cook's Distance with a horizontal line at K+1/n to see which observations exceed this threshold (* 3, see Stevens, 2002)
+n <- nrow(data_scale)
+plot(cooksd, main = "Cooks Distance for Influential Obs")
+abline(h = (8/n) * 3, lty = 2, col = "steelblue") # add cutoff line
+
+# infleunce plot
+car::influencePlot(WG_M,col="red",id.n=3)
+car::influenceIndexPlot(WG_M, id.n=3)
+#multicollinearity
+car::vif(WG_M) # no VIF value that exceeds 5 or 10 
+```
+
+## Fatigue
+### Predict by ferritin
+```{r, warning=F, message=F, error=F}
+#| label: investigate fatigue and ferritin
+res <- cor.test(data_scale$CIS_Totalmean, data_scale$Ferritin,  method = "pearson", use = "complete.obs")
+ggplot(data_scale, mapping = aes(x = CIS_Totalmean, y = Ferritin)) + 
+  geom_point() + 
+  theme_bw() +
+  geom_text(x = 120, y = 1000, label=paste('r(',res$parameter,') = ', round(res$estimate,3),', p = ', round(res$p.value, 3), sep = '')) +
+  labs(x="Fatigue, higher is worse", y="Ferritine")
+  
+# plot for cutoffs
+data_scale <- data_scale %>% mutate(Fergroup = factor(case_when(Ferritin < 15 ~ 1, Ferritin >= 15 & Ferritin <= 30~ 2, Ferritin > 30 ~ 3)) %>%  fct_recode("Ferritin < 15" = "1", "Ferritin 15-30" = "2", "Ferritin > 30" = "3"))
+
+ggplot(data_scale, aes(x=Fergroup, y=CIS_Totalmean)) +
+  geom_boxplot() + 
+  theme_bw() +
+  labs(x="Ferritin cut-off groups", y="Fatigue, higher is worse")
+```
+
+### Models
+```{r}
+#| label: models fatigue
+CIS_preF <- lm(CIS_Totalmean  ~ Age + Weight + Height + Intervention_months_factor, data = data_scale, subset = data_scale$Gender == "Female" & data_scale$PostMeno == 0)
+CIS_postF <- lm(CIS_Totalmean  ~ Age + Weight + Height + Intervention_months_factor, data = data_scale, subset = data_scale$Gender == "Female" & data_scale$PostMeno == 1)
+CIS_M <- lm(CIS_Totalmean  ~ Age + Weight + Height + Intervention_months_factor, data = data_scale, subset = data_scale$Gender == "Male")
+
+pl <- c(
+  `(Intercept)` = "Intercept",
+  `as.factor(Intervention_months_factor)1` = "6-12 months",
+  `as.factor(Intervention_months_factor)2` = "12-18 months",
+  `as.factor(Intervention_months_factor)3` = "18-24 months",
+  `as.factor(Intervention_months_factor)4` = "24+ months"
+  
+)
+
+
+tab_model(CIS_preF, CIS_postF, CIS_M, pred.labels = pl, dv.labels = c("Pre-menopausal women", "Post-menopausal women", "Men"), title = "Fatigue, higher score is worse, show.reflvl = T, digits = 3")
+```
+
+### Assumptions
+**Premenopausal females:**
+```{r, warning=F, message=F, error=F}
+#| label: assumptions fatigue preF
+### LINEARITY (Linearity and constant variance assumptions)
+#Fitted versus Residuals Plot: Linearity good,  constant variance (heteroscedasticity)
+plot(CIS_preF, which = 1)
+
+### HOMOGEINITY OF VARIANCE
+# Display scale-location plot (also known as  spread-location plot)
+plot(CIS_preF, which = 3) # Linearity good,  constant variance 
+# formal test in the form of Breusch-Pagan 
+bptest(CIS_preF) #  The constant variance assumption is not violated.
+
+### NORMALITY OF RESIDUALS
+#QQ plot
+plot(CIS_preF, 2) #suspect
+# formal test in the form of Shapiro-Wilk
+shapiro.test(resid(CIS_preF)) #fail to reject for the data sampled from normal
+
+
+### OUTLIERS
+#plot 3largest
+plot(CIS_preF, which = 4, id.n = 3)
+# inspect the largest
+model.data <- augment(CIS_preF) %>% 
+  mutate(index = 1:n())
+model.data %>% top_n(3, .cooksd) # residuals are above 3, does deserve closer attention
+# Plot standardized residuals
+ggplot(model.data, aes(index, .std.resid)) + 
+  geom_point(aes(color = CIS_Totalmean), alpha = .5) +
+  theme_bw()
+# Filter potential influential data point
+model.data %>% 
+  filter(abs(.std.resid) > 3) # some influential data points
+
+#Cook's distance
+cooksd = cooks.distance(CIS_preF)
+# Plot Cook's Distance with a horizontal line at K+1/n to see which observations
+#exceed this threshold
+n <- nrow(data_scale)
+plot(cooksd, main = "Cooks Distance for Influential Obs")
+abline(h = (8/n) * 3, lty = 2, col = "steelblue") # add cutoff line
+
+
+# check log transform to pass normality. 
+data_scale2 <- data_scale
+table(data_scale2$CIS_Totalmean)
+data_scale2$CIS_Totalmean <- log10(data_scale$CIS_Totalmean)
+table(data_scale2$CIS_Totalmean)
+
+
+#analaysis with log transformed
+CIS_preF_factor_fix <- lm(CIS_Totalmean~ Age + Weight + Height + as.factor(Intervention_months_factor), 
+                     data = data_scale2, 
+                     subset = data_scale2$Gender == "Female" & data_scale2$PostMeno == 0)
+
+qqnorm(resid(CIS_preF_factor_fix), col = "grey")
+qqline(resid(CIS_preF_factor_fix), col = "dodgerblue", lwd = 2)
+shapiro.test(resid(CIS_preF_factor_fix))
+## Transforming does not seem to help. Many outliers. Solution -> robust regression, see chunk below.
+
+#multicollinearity
+car::vif(CIS_preF) # no VIF value that exceeds 5 or 10 
+```
+
+**Postmenopausal females:***
+```{r, warning=F, message=F, error=F}
+#| label: assumptions fatigue postF
+### LINEARITY (Linearity and constant variance assumptions)
+#Fitted versus Residuals Plot: Linearity ok,  constant variance looks ok(heteroscedasticity)
+plot(CIS_postF, which = 1)
+
+### HOMOGEINITY OF VARIANCE
+# Display scale-location plot, also known as the spread-location plot
+plot(CIS_postF, which = 3) # constant variance ok
+# formal test in the form of Breusch-Pagan 
+bptest(CIS_postF) # we fail to reject the null of homoscedasticity. The constant variance assumption is not violated.
+
+### NORMALITY OF RESIDUALS
+#QQ plot
+plot(CIS_postF, 2) #suspect
+# formal test in the form of Shapiro-Wilk
+shapiro.test(resid(CIS_postF)) #fail to reject for the data sampled from normal
+
+### OUTLIERS
+#plot 3largest
+plot(CIS_postF, which = 4, id.n = 3)
+# inspect the largest
+model.data <- augment(CIS_postF) %>% 
+  mutate(index = 1:n())
+model.data %>% top_n(3, .cooksd) # residuals are above 3, does deserve closer attention
+# Plot standardized residuals
+ggplot(model.data, aes(index, .std.resid)) + 
+  geom_point(aes(color = CIS_Totalmean), alpha = .5) +
+  theme_bw()
+# Filter potential influential data point
+model.data %>% 
+  filter(abs(.std.resid) > 4) # some influential data points
+#Cook's distance
+cooksd = cooks.distance(CIS_postF)
+# Plot Cook's Distance with a horizontal line at K+1/n to see which observations
+#exceed this threshold
+n <- nrow(data_scale)
+plot(cooksd, main = "Cooks Distance for Influential Obs")
+abline(h = (8/n) * 3, lty = 2, col = "steelblue") # add cutoff line
+
+#analaysis with log transformed
+CIS_postF_factor_fix <- lm(CIS_Totalmean~ Age + Weight + Height + as.factor(Intervention_months_factor), 
+                     data = data_scale2, 
+                     subset = data_scale2$Gender == "Female" & data_scale2$PostMeno == 1)
+
+qqnorm(resid(CIS_postF_factor_fix), col = "grey")
+qqline(resid(CIS_postF_factor_fix), col = "dodgerblue", lwd = 2)
+shapiro.test(resid(CIS_postF_factor_fix))
+## Transforming does not seem to help. Many outliers. Solution -> robust regression, see chunk below.
+
+#multicollinearity
+car::vif(CIS_postF) # no VIF value that exceeds 5 or 10 
+```
+
+**Males:**
+```{r, warning=F, message=F, error=F}
+#| label: assumptions fatigue males
+### LINEARITY (Linearity and constant variance assumptions)
+#Fitted versus Residuals Plot: Good
+plot(CIS_M, which = 1)     # Linearity ok,  constant variance looks ok(heteroscedasticity)
+
+### HOMOGEINITY OF VARIANCE
+# Display scale-location plot, also known as the spread-location plot
+plot(CIS_M, which = 3) # Linearity ok,  constant variance looks ok(heteroscedasticity)
+# formal test in the form of Breusch-Pagan 
+bptest(CIS_M)# small p-value, so we  reject the null of homoscedasticity. The constant variance assumption is violated.
+### NORMALITY OF RESIDUALS
+#QQ plot
+plot(CIS_M, 2) # suspect
+# formal test in the form of Shapiro-Wilk
+shapiro.test(resid(CIS_M)) #reject for the data sampled from normal
+
+### OUTLIERS
+#plot 3largest
+plot(CIS_M, which = 4, id.n = 3)
+# inspect the largest
+model.data <- augment(CIS_M) %>% 
+  mutate(index = 1:n())
+model.data %>% top_n(3, .cooksd) # residuals are above 3, does deserve closer attention
+# Plot standardized residuals
+ggplot(model.data, aes(index, .std.resid)) + 
+  geom_point(aes(color = CIS_Totalmean), alpha = .5) +
+  theme_bw()
+# Filter potential influential data point
+model.data %>% 
+  filter(abs(.std.resid) > 4) # some influential data points
+
+#Cook's distance
+cooksd = cooks.distance(CIS_M)
+# Plot Cook's Distance with a horizontal line at K+1/n to see which observations
+#exceed this threshold
+n <- nrow(data_scale)
+plot(cooksd, main = "Cooks Distance for Influential Obs")
+abline(h = (8/n) * 3, lty = 2, col = "steelblue") # add cutoff line
+
+#analaysis with log transformed
+CISMfactor_fix <- lm(CIS_Totalmean~ Age + Weight + Height + as.factor(Intervention_months_factor), 
+                     data = data_scale2, 
+                     subset = data_scale2$Gender == "Female" & data_scale2$PostMeno == 1)
+
+qqnorm(resid(CISMfactor_fix), col = "grey")
+qqline(resid(CISMfactor_fix), col = "dodgerblue", lwd = 2)
+shapiro.test(resid(CISMfactor_fix))
+## Transforming does not seem to help. Many outliers. Solution -> robust regression, see chunk below.
+
+
+#multicollinearity
+car::vif(CIS_M) # no VIF value that exceeds 5 or 10 
+
+```
+ 
+ ::: {.callout-note appearance="default"}
+### Decision
+
+We conclude that the assumptions were violated and thus we use robust models.
+:::
+
+### Robust models
+```{r}
+#| label: robust models fatigue
+CIS_preF_robust <- lmrob(CIS_Totalmean ~ Age + Weight + Height + as.factor(Intervention_months_factor) , data = data_scale, subset  = data_scale$Gender == "Female" & data_scale$PostMeno == 0)
+CIS_postF_robust <- lmrob(CIS_Totalmean ~ Age + Weight + Height + as.factor(Intervention_months_factor) , data = data_scale, subset  = data_scale$Gender == "Female" & data_scale$PostMeno == 1)
+CIS_M_robust <- lmrob(CIS_Totalmean ~ Age + Weight + Height + as.factor(Intervention_months_factor) , data = data_scale, subset  = data_scale$Gender == "Male")
+
+pl <- c(
+  `(Intercept)` = "Intercept",
+  `as.factor(Intervention_months_factor)1` = "6-12 months",
+  `as.factor(Intervention_months_factor)2` = "12-18 months",
+  `as.factor(Intervention_months_factor)3` = "18-24 months",
+  `as.factor(Intervention_months_factor)4` = "24+ months"
+  
+)
+
+
+tab_model(CIS_preF_robust, CIS_postF_robust, CIS_M_robust, pred.labels = pl, dv.labels = c("Pre-menopausal women", "Post-menopausal women", "Men"), title = "Fatigue, higher score is worse (robust regression)", show.reflvl = T, digits = 3)
+```
