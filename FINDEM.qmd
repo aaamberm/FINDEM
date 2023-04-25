@@ -21,7 +21,6 @@ library(GGally)          # extensions to ggplot2
 library(sjlabelled)      # work with SPSS data
 library(lubridate)       # dates
 library(lme4)            # mixed models
-library(rstudioapi)      # for working directory
 library(table1)          # for producing t1
 library(sjPlot)          # for model outputs
 library(car)             # to calculate VIF
@@ -34,7 +33,7 @@ setwd("~/Amber/FINDEM")
 
 We load and clean the data and present a summary.
 
-```{r}
+```{r, collapse = T}
 #| label: process data
 data_raw <- read_sav("data/Donaties_4meetweken_plus.sav") 
 # select relevant columns
