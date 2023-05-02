@@ -62,7 +62,7 @@ What stands out is that 6000 records do not have a cluster and thus cannot be at
 
 ```{r}
 #| label: recode data
-data_clean<-data_clean%>%mutate(Hb = replace(Hb, Hb == 999, NA))
+data_clean<-data_clean%>%mutate(Hb = replace(Hb, Hb == 999, NA))%>%filter(!is.na(Cluster))
 
 #save the data as an Rdta file
 save(data_clean, file = "data/findem_clean.Rdta")
