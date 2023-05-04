@@ -35,35 +35,33 @@ We load and clean the data and present a summary.
 
 ```{r, collapse = T}
 #| label: process data
-data_raw <- read_sav("data/Donaties_4meetweken_plus.sav") 
-# select relevant columns
-data_raw2 <- data_raw %>% dplyr::select(KeyID, Hb, HbGoedgekeurd, Ferritine_FINDEM, stap, Meetweek, cluster, Geslacht, Gewicht, Lengte, LeeftijdBijDOnatie, ReturnOpTijd, Return, Donatiedatum)
+data_raw <- readRDS("data/FINDEM_data.rds")
 #clean data
-data_clean <- data_raw2 %>% 
+data_clean <- data_raw%>% 
   mutate(HbDef = factor(case_when(HbGoedgekeurd == 0 ~ 1, HbGoedgekeurd == 1 ~ 0))) %>% 
   mutate(Gender = factor(Geslacht) %>% fct_recode("Male" = "Man", "Female" = "Vrouw")) %>% 
   mutate(Timepoint = case_when(Meetweek == 0 ~ as.Date('2017-11-01'), Meetweek == 1 ~ as.Date('2019-03-01'), Meetweek == 2 ~ as.Date('2019-11-01'), TRUE ~ as.Date('2020-11-23'))) %>% 
-  mutate(Step = case_when(stap == 1.0 ~ as.Date('2017-11-01'), stap == 2.1 ~ as.Date('2018-05-01'), stap == 2.2~ as.Date('2018-10-01'), stap == 3.1 ~ as.Date('2019-03-01'), stap == 3.2 ~ as.Date('2019-10-01'), stap == 4.0 ~ as.Date('2019-11-01'))) %>% 
+  mutate(Step = case_when(stap2 == 1.0 ~ as.Date('2017-11-01'), stap2 == 2.1 ~ as.Date('2018-05-01'), stap2 == 2.2~ as.Date('2018-10-01'), stap2 == 3.1 ~ as.Date('2019-03-01'), stap2 == 3.2 ~ as.Date('2019-10-01'), stap2 == 4.0 ~ as.Date('2019-11-01'))) %>% 
   mutate(Intervention_months = interval(Step, Timepoint) %/% months(1)) %>% 
   mutate(Intervention_months =  if_else(Intervention_months < 0, 0, Intervention_months)) %>% 
   mutate(Intervention = factor(case_when(Intervention_months == 0 ~ 0, TRUE & !is.na(Intervention_months)~ 1)))%>% 
   mutate(PostMeno = factor(case_when(Gender == "Female" & LeeftijdBijDOnatie < 45 ~ 0, Gender== "Female" & LeeftijdBijDOnatie >= 45 ~ 1))) %>%
-  rename(Ferritin = Ferritine_FINDEM, Age = LeeftijdBijDOnatie, Cluster = cluster, Weight = Gewicht, Height = Lengte)  %>% 
+  rename(Ferritin = Ferritine_FINDEM, Age = LeeftijdBijDOnatie, Weight = Gewicht, Height = Lengte)  %>% 
   mutate(IronDef = factor(case_when(Ferritin >= 15 ~ 0, Ferritin < 15 ~ 1)))%>% 
-  dplyr::select(-HbGoedgekeurd, -Geslacht)%>%
+  dplyr::select(-HbGoedgekeurd, -Geslacht, -Einnummer)%>%
   mutate(Intervention_months2 =  if_else(Intervention_months < 6, 0, Intervention_months))%>%
   mutate(Intervention_months_factor = factor(case_when(Intervention_months == 0 ~ 0, Intervention_months == 1 ~ 0, Intervention_months == 5 ~ 0, Intervention_months == 8 ~ 1, Intervention_months == 10 ~ 1, Intervention_months == 12 ~ 2, Intervention_months == 13 ~ 2,Intervention_months == 16 ~ 2,Intervention_months == 18 ~ 3, Intervention_months == 20 ~ 3, Intervention_months == 24 ~ 4, Intervention_months == 25 ~ 4, Intervention_months == 30 ~ 5, Intervention_months == 36 ~ 6))) %>%
   mutate(COVID = factor(case_when(Donatiedatum < "2019-10-01" ~ 0, Donatiedatum >= "2019-10-01" ~ 1)))
+
 ## Quick view
 summary(data_clean)
 ```
 
-What stands out is that 6000 records do not have a cluster and thus cannot be attributed to one of the implementation steps, nor can we define whether at that point they were exposed to the intervention or not. Ferritin missing data is expected due to errors on the analyser and samples not handled properly. Hb has a maximum value of of 999, ferritin of \~2000. Hb maximum of 999 is an NA, technically ferritin maximum value is possible. We adjust the data to account for this.
+ Ferritin missing data is expected due to errors on the analyser and samples not handled properly. Hb has a maximum value of of 999, ferritin of \~2000. Hb maximum of 999 is an NA, technically ferritin maximum value is possible. We adjust the data to account for this.
 
 ```{r}
 #| label: recode data
-data_clean<-data_clean%>%mutate(Hb = replace(Hb, Hb == 999, NA))%>%filter(!is.na(Cluster))
-
+data_clean<-data_clean%>%mutate(Hb = replace(Hb, Hb == 999, NA))
 #save the data as an Rdta file
 save(data_clean, file = "data/findem_clean.Rdta")
 ```
@@ -78,7 +76,7 @@ Now, we can have a quick look at the cleaned data:
 #| layout-ncol: 2
 data_clean %>%
   na.omit() %>% 
-  dplyr::select(-KeyID, -stap, -Meetweek, -Cluster, -HbDef, -Timepoint, -Step, -Weight, -Height, -Intervention_months,-COVID, -Donatiedatum, -ReturnOpTijd, -Intervention_months2, -Intervention_months_factor, -Step) %>%
+  dplyr::select(-KeyID, -stap2, -Meetweek, -Cluster, -HbDef, -Timepoint, -Step, -Weight, -Height, -Intervention_months,-COVID, -Donatiedatum, -ReturnOpTijd, -Intervention_months2, -Intervention_months_factor, -Step) %>%
   GGally::ggpairs(mapping = aes(fill    = Intervention,
                               col       = Intervention,
                               alpha     = 0.05),
@@ -123,14 +121,14 @@ We present the data stratified by sex and menopausal status.
 data_teller <- read_sav("data/baseline_teller.sav")
 data_t1 <- data_clean%>% filter(!is.na(Cluster), Meetweek==0) 
 data_t1 <- merge(data_t1, data_teller,  by = "KeyID")
-data_t1 <- data_t1 %>% mutate(stap2 = as.factor(stap), stap2 = recode_factor(stap2, "2.1"="2","2.2"="2", "3.1"="3", "3.2"="3"), stap2 = factor(stap2,levels = c("1", "2", "3", "4")), Ndonation = TotaalOpBaseline, Ndonation = replace(Ndonation, Ndonation>0, 1), Ndonation = recode_factor(Ndonation, `1`="0", `0`= "1"))
+data_t1 <- data_t1 %>% mutate(stap3 = as.factor(stap2), stap3 = recode_factor(stap3, "2.1"="2","2.2"="2", "3.1"="3", "3.2"="3"), stap3 = factor(stap3,levels = c("1", "2", "3", "4")), Ndonation = TotaalOpBaseline, Ndonation = replace(Ndonation, Ndonation>0, 1), Ndonation = recode_factor(Ndonation, `1`="0", `0`= "1"))
 ```
 
 ## Premenopausal females
 
 ```{r}
 #| label: t1 pre-menopausal females
-prefemalest1<-table1::table1(~ Age + Hb + Ferritin + Height + Weight + TotaalOpBaseline + Previous2yr + factor(IronDef) + factor(HbDef) + factor(ReturnOpTijd) + factor(Ndonation) | factor(stap2), data = subset(data_t1, data_t1$Gender=="Female" & data_t1$PostMeno==0), caption = "Premenopausal females", render.continuous=c(.="Mean (SD)", .="Median [Q1, Q3]"), render.categorical=c(.="FREQ (PCT)"))
+prefemalest1<-table1::table1(~ Age + Hb + Ferritin + Height + Weight + TotaalOpBaseline + Previous2yr + factor(IronDef) + factor(HbDef) + factor(ReturnOpTijd) + factor(Ndonation) | factor(stap3), data = subset(data_t1, data_t1$Gender=="Female" & data_t1$PostMeno==0), caption = "Premenopausal females", render.continuous=c(.="Mean (SD)", .="Median [Q1, Q3]"), render.categorical=c(.="FREQ (PCT)"))
 prefemalest1
 ```
 
@@ -138,7 +136,7 @@ prefemalest1
 
 ```{r}
 #| label: t1 post-menopausal females
-postfemalest1<-table1(~ Age + Hb + Ferritin + Height + Weight +TotaalOpBaseline + Previous2yr + factor(IronDef) + factor(HbDef) + factor(Return) + factor(ReturnOpTijd) + factor(Ndonation) | factor(stap2), data = subset(data_t1, data_t1$Gender=="Female" & data_t1$PostMeno==1), caption = "Females", render.continuous=c(.="Mean (SD)", .="Median [Q1, Q3]"), render.categorical=c(.="FREQ (PCT)"))
+postfemalest1<-table1(~ Age + Hb + Ferritin + Height + Weight +TotaalOpBaseline + Previous2yr + factor(IronDef) + factor(HbDef) + factor(Return) + factor(ReturnOpTijd) + factor(Ndonation) | factor(stap3), data = subset(data_t1, data_t1$Gender=="Female" & data_t1$PostMeno==1), caption = "Females", render.continuous=c(.="Mean (SD)", .="Median [Q1, Q3]"), render.categorical=c(.="FREQ (PCT)"))
 postfemalest1
 ```
 
@@ -146,7 +144,7 @@ postfemalest1
 
 ```{r}
 #| label: t1 males
-malest1<- table1(~ Age + Hb + Ferritin + Height + Weight +TotaalOpBaseline + Previous2yr + factor(IronDef) + factor(HbDef) + factor(Return) + factor(ReturnOpTijd) + factor(Ndonation) | factor(stap2), data = subset(data_t1, data_t1$Gender=="Male"), caption = "Males", render.continuous=c(.="Mean (SD)", .="Median [Q1, Q3]"), render.categorical=c(.="FREQ (PCT)"))
+malest1<- table1(~ Age + Hb + Ferritin + Height + Weight +TotaalOpBaseline + Previous2yr + factor(IronDef) + factor(HbDef) + factor(Return) + factor(ReturnOpTijd) + factor(Ndonation) | factor(stap3), data = subset(data_t1, data_t1$Gender=="Male"), caption = "Males", render.continuous=c(.="Mean (SD)", .="Median [Q1, Q3]"), render.categorical=c(.="FREQ (PCT)"))
 malest1
 ```
 
@@ -374,7 +372,7 @@ summary(ferritin_fit_postF)
 
 We decide to proceed with the analyses using standard linear regression models using only fixed effects, thus disregarding the random effects from clustering by donation center cluster. We decided to deviate from the protocol based on:
 
--   the ICC that ranges from 0.000 to 0.05
+-   the ICC generally low ICCs that range from 0.000 to 0.01
 
 -   the very small difference between the marginal and conditional R squared
 

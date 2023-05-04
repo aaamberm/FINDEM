@@ -1,0 +1,278 @@
+---
+title: "Effectiveness of Ferritin‐guided Donation Intervals in Blood Donors: results of the Stepped Wedge Cluster‐randomized FIND’EM Trial"
+format:
+  html:
+    code-fold: true
+#    page-layout: full
+    toc: true
+    embed-resources: true
+---
+
+```{r}
+#| label: load-packages
+#| include: false
+
+library(tidyverse)       
+library(haven)           # importing SPSS data files
+library(furniture)       # nice tables of descriptives
+library(corrplot)        # visualize correlations
+library(ggplot2)         # plot making
+library(GGally)          # extensions to ggplot2
+library(sjlabelled)      # work with SPSS data
+library(lubridate)       # dates
+library(lme4)            # mixed models
+library(table1)          # for producing t1
+library(sjPlot)          # for model outputs
+library(car)             # to calculate VIF
+library(broom)           # for function augment
+library(stringr)
+
+setwd("~/Amber/FINDEM") 
+```
+
+# Data
+
+We load and clean the data and present a summary.
+
+```{r, collapse = T}
+#| label: process data
+data_raw <- readRDS("data/FINDEM_data.rds")
+#clean data
+data_clean <- data_raw%>% 
+  mutate(HbDef = factor(case_when(HbGoedgekeurd == 0 ~ 1, HbGoedgekeurd == 1 ~ 0))) %>% 
+  mutate(Gender = factor(Geslacht) %>% fct_recode("Male" = "Man", "Female" = "Vrouw")) %>% 
+  mutate(Timepoint = case_when(Meetweek == 0 ~ as.Date('2017-11-01'), Meetweek == 1 ~ as.Date('2019-03-01'), Meetweek == 2 ~ as.Date('2019-11-01'), TRUE ~ as.Date('2020-11-23'))) %>% 
+  mutate(Step = case_when(stap2 == 1.0 ~ as.Date('2017-11-01'), stap2 == 2.1 ~ as.Date('2018-05-01'), stap2 == 2.2~ as.Date('2018-10-01'), stap2 == 3.1 ~ as.Date('2019-03-01'), stap2 == 3.2 ~ as.Date('2019-10-01'), stap2 == 4.0 ~ as.Date('2019-11-01'))) %>% 
+  mutate(Intervention_months = interval(Step, Timepoint) %/% months(1)) %>% 
+  mutate(Intervention_months =  if_else(Intervention_months < 0, 0, Intervention_months)) %>% 
+  mutate(Intervention = factor(case_when(Intervention_months == 0 ~ 0, TRUE & !is.na(Intervention_months)~ 1)))%>% 
+  mutate(PostMeno = factor(case_when(Gender == "Female" & LeeftijdBijDOnatie < 45 ~ 0, Gender== "Female" & LeeftijdBijDOnatie >= 45 ~ 1))) %>%
+  rename(Ferritin = Ferritine_FINDEM, Age = LeeftijdBijDOnatie, Weight = Gewicht, Height = Lengte)  %>% 
+  mutate(IronDef = factor(case_when(Ferritin >= 15 ~ 0, Ferritin < 15 ~ 1)))%>% 
+  dplyr::select(-HbGoedgekeurd, -Geslacht)%>%
+  mutate(Intervention_months2 =  if_else(Intervention_months < 6, 0, Intervention_months))%>%
+  mutate(Intervention_months_factor = factor(case_when(Intervention_months == 0 ~ 0, Intervention_months == 1 ~ 0, Intervention_months == 5 ~ 0, Intervention_months == 8 ~ 1, Intervention_months == 10 ~ 1, Intervention_months == 12 ~ 2, Intervention_months == 13 ~ 2,Intervention_months == 16 ~ 2,Intervention_months == 18 ~ 3, Intervention_months == 20 ~ 3, Intervention_months == 24 ~ 4, Intervention_months == 25 ~ 4, Intervention_months == 30 ~ 5, Intervention_months == 36 ~ 6))) %>%
+  mutate(COVID = factor(case_when(Donatiedatum < "2019-10-01" ~ 0, Donatiedatum >= "2019-10-01" ~ 1)))
+
+summary(data_clean)
+
+data_clean<-data_clean%>%mutate(Hb = replace(Hb, Hb == 999, NA))%>%filter(!is.na(Cluster))
+
+```
+
+# Table 1
+
+See section Descriptives of main FINDEM.html file.
+
+# Table 2
+
+See section Analysis \> Linear regression of main FINDEM.html file.
+
+# Table 3
+
+See section Analysis of FINDEM_questionnaire.html file.
+
+# Table S1
+
+See section Descriptives of FINDEM_questionnaire.html file.
+
+# Table S2
+
+For this sensitivity analysis, we need to scale the data:
+
+```{r}
+#| label: scaled dataset
+data_scale <- data_clean
+data_scale$Age <- scale(data_scale$Age, center=TRUE, scale = FALSE)
+data_scale$Weight <- scale(data_scale$Weight, center=TRUE, scale = FALSE)
+data_scale$Height <- scale(data_scale$Height, center=TRUE, scale = FALSE)
+data_scale$FerritinLog10 <- log10(data_scale$Ferritin) 
+```
+
+For ferritin $\le$ 30:
+
+```{r}
+return_fitM_b30 <- glm(formula = ReturnOpTijd ~ Age + Weight + Height + Intervention_months_factor, data = data_scale, subset = data_scale$Gender == "Male" & data_scale$Ferritin <= 30,family = binomial)
+return_fit_preF_b30 <- glm(formula = ReturnOpTijd ~ Age + Weight + Height + Intervention_months_factor, data = data_scale, subset = data_scale$Gender == "Female" & data_scale$PostMeno == 0 & data_scale$Ferritin <= 30,family = binomial)
+return_fit_postF_b30 <- glm(formula = ReturnOpTijd ~ Age + Weight + Height + Intervention_months_factor, data = data_scale, subset = data_scale$Gender == "Female" & data_scale$PostMeno == 1 & data_scale$Ferritin <= 30,family = binomial)
+
+pl <- c(
+  `(Intercept)` = "Intercept",
+  Intervention_months_factor1 = "6-11 months",
+  Intervention_months_factor2 = "12-17 months",
+  Intervention_months_factor3 = "18-23 months",
+  Intervention_months_factor4 = "24-29 months",
+  Intervention_months_factor5 = "30-35 months",
+  Intervention_months_factor6 = "36+ months"
+)
+
+tab_model(return_fit_preF_b30, return_fit_postF_b30, return_fitM_b30, pred.labels = pl, dv.labels = c("Pre-menopausal women", "Post-menopausal women", "Men"), show.reflvl = T, title = "Donor return (on time)")
+```
+
+For ferritin \> 30:
+```{r}
+return_fitM_a30 <- glm(formula = ReturnOpTijd ~ Age + Weight + Height + Intervention_months_factor, data = data_scale, subset = data_scale$Gender == "Male" & data_scale$Ferritin > 30,family = binomial)
+return_fit_preF_a30 <- glm(formula = ReturnOpTijd ~ Age + Weight + Height + Intervention_months_factor, data = data_scale, subset = data_scale$Gender == "Female" & data_scale$PostMeno == 0 & data_scale$Ferritin > 30,family = binomial)
+return_fit_postF_a30 <- glm(formula = ReturnOpTijd ~ Age + Weight + Height + Intervention_months_factor, data = data_scale, subset = data_scale$Gender == "Female" & data_scale$PostMeno == 1 & data_scale$Ferritin > 30,family = binomial)
+
+pl <- c(
+  `(Intercept)` = "Intercept",
+  Intervention_months_factor1 = "6-11 months",
+  Intervention_months_factor2 = "12-17 months",
+  Intervention_months_factor3 = "18-23 months",
+  Intervention_months_factor4 = "24-29 months",
+  Intervention_months_factor5 = "30-35 months",
+  Intervention_months_factor6 = "36+ months"
+)
+
+tab_model(return_fit_preF_a30, return_fit_postF_a30, return_fitM_a30, pred.labels = pl, dv.labels = c("Pre-menopausal women", "Post-menopausal women", "Men"), show.reflvl = T, title = "Donor return (on time)")
+```
+
+# Table S3
+
+To give a clear overview of the differences between the pre- and post-implementation situation in the donation centers, we present the following table:
+
+```{r}
+SupTable3<-table1::table1(~ Age + Hb + Ferritin + Height + Weight + factor(IronDef) + factor(HbDef) + factor(ReturnOpTijd) | factor(Meetweek), data = subset(data_clean, data_clean$Meetweek =="1" | data_clean$Meetweek=="4"), caption = "Premenopausal females", render.continuous=c(.="Mean (SD)", .="Median [Q1, Q3]"), render.categorical=c(.="FREQ (PCT)"), overall=F)
+SupTable3
+```
+
+# Table S4
+
+We have conducted a sensitivity analysis on the donor return outcome, separating donors that were deferred based on Hb and donors that were deferred based on ferritin levels.
+
+For donors that were deferred based on Hb levels: 
+
+```{r}
+return_fitM_HbDef <- glm(formula = ReturnOpTijd ~ Age + Weight + Height + Intervention_months_factor, data = data_scale, subset = data_scale$Gender == "Male" & data_scale$HbDef == 1,family = binomial)
+return_fit_preF_HbDef <- glm(formula = ReturnOpTijd ~ Age + Weight + Height + Intervention_months_factor, data = data_scale, subset = data_scale$Gender == "Female" & data_scale$PostMeno == 0 & data_scale$HbDef == 1,family = binomial)
+return_fit_postF_HbDef <- glm(formula = ReturnOpTijd ~ Age + Weight + Height + Intervention_months_factor, data = data_scale, subset = data_scale$Gender == "Female" & data_scale$PostMeno == 1 & data_scale$HbDef == 1,family = binomial)
+
+pl <- c(
+  `(Intercept)` = "Intercept",
+  Intervention_months_factor1 = "6-11 months",
+  Intervention_months_factor2 = "12-17 months",
+  Intervention_months_factor3 = "18-23 months",
+  Intervention_months_factor4 = "24-29 months",
+  Intervention_months_factor5 = "30-35 months",
+  Intervention_months_factor6 = "36+ months"
+)
+
+tab_model(return_fit_preF_HbDef, return_fit_postF_HbDef, return_fitM_HbDef, pred.labels = pl, dv.labels = c("Pre-menopausal women", "Post-menopausal women", "Men"), show.reflvl = T, title = "Donor return (on time) for Hb deferred donors")
+```
+
+For donors that were deferred based on ferritin levels:
+
+```{r}
+return_fitM_b30 <- glm(formula = ReturnOpTijd ~ Age + Weight + Height + Intervention_months_factor, data = data_scale, subset = data_scale$Gender == "Male" & data_scale$Ferritin <= 30,family = binomial)
+return_fit_preF_b30 <- glm(formula = ReturnOpTijd ~ Age + Weight + Height + Intervention_months_factor, data = data_scale, subset = data_scale$Gender == "Female" & data_scale$PostMeno == 0 & data_scale$Ferritin <= 30,family = binomial)
+return_fit_postF_b30 <- glm(formula = ReturnOpTijd ~ Age + Weight + Height + Intervention_months_factor, data = data_scale, subset = data_scale$Gender == "Female" & data_scale$PostMeno == 1 & data_scale$Ferritin <= 30,family = binomial)
+
+pl <- c(
+  `(Intercept)` = "Intercept",
+  Intervention_months_factor1 = "6-11 months",
+  Intervention_months_factor2 = "12-17 months",
+  Intervention_months_factor3 = "18-23 months",
+  Intervention_months_factor4 = "24-29 months",
+  Intervention_months_factor5 = "30-35 months",
+  Intervention_months_factor6 = "36+ months"
+)
+
+tab_model(return_fit_preF_b30, return_fit_postF_b30, return_fitM_b30, pred.labels = pl, dv.labels = c("Pre-menopausal women", "Post-menopausal women", "Men"), show.reflvl = T, title = "Donor return (on time) for donors whose donation intervals were extended")
+```
+
+# Table S5
+
+We stratify the analysis of the donor return outcome by urban vs. rural donation locations. Urban locations are defined as fixed donation centers, rural locations are defined as mobile donation centers. 
+
+```{r}
+#we first need to find whether a location was done at a mobile location. We find this through linking our data to the donation database.
+alldonations <- readRDS("~/Amber/Data/alledonaties_2008_2022.rds")
+alldonations <- subset(alldonations, select = c("EINnummer", "Donatiecentrumcode"))
+alldonations$EINnummer <- substr(alldonations$EINnummer,1,13)
+data_scale2 <- merge(data_scale, alldonations, by.x = "Einnummer", by.y = "EINnummer", all.x = T)
+data_scale2 <- data_scale2 %>% mutate(MAL = grepl("ML", Donatiecentrumcode)) %>% mutate(MAL = case_when(MAL == FALSE ~ 0,MAL == TRUE ~ 1 ))
+```
+
+For donors that located in an urban center:
+```{r}
+return_fitM_AL <- glm(formula = ReturnOpTijd ~ Age + Weight + Height + Intervention_months_factor, data = data_scale2, subset = data_scale2$Gender == "Male" & data_scale2$MAL ==0,family = binomial)
+return_fit_preF_AL <- glm(formula = ReturnOpTijd ~ Age + Weight + Height + Intervention_months_factor, data = data_scale2, subset = data_scale2$Gender == "Female" & data_scale2$PostMeno == 0 & data_scale2$MAL==0,family = binomial)
+return_fit_postF_AL <- glm(formula = ReturnOpTijd ~ Age + Weight + Height + Intervention_months_factor, data = data_scale2, subset = data_scale2$Gender == "Female" & data_scale2$PostMeno == 1 & data_scale2$MAL==0,family = binomial)
+
+pl <- c(
+  `(Intercept)` = "Intercept",
+  Intervention_months_factor1 = "6-11 months",
+  Intervention_months_factor2 = "12-17 months",
+  Intervention_months_factor3 = "18-23 months",
+  Intervention_months_factor4 = "24-29 months",
+  Intervention_months_factor5 = "30-35 months",
+  Intervention_months_factor6 = "36+ months"
+)
+
+tab_model(return_fit_preF_AL, return_fit_postF_AL, return_fitM_AL, pred.labels = pl, dv.labels = c("Pre-menopausal women", "Post-menopausal women", "Men"), show.reflvl = T, title = "Donor return (on time) for donors at an urban locatoin")
+```
+
+For donors that donated at a rural location:
+
+```{r}
+return_fitM_MAL <- glm(formula = ReturnOpTijd ~ Age + Weight + Height + Intervention_months_factor, data = data_scale2, subset = data_scale2$Gender == "Male" & data_scale2$MAL ==1,family = binomial)
+return_fit_preF_MAL <- glm(formula = ReturnOpTijd ~ Age + Weight + Height + Intervention_months_factor, data = data_scale2, subset = data_scale2$Gender == "Female" & data_scale2$PostMeno == 0 & data_scale2$MAL==1,family = binomial)
+return_fit_postF_MAL <- glm(formula = ReturnOpTijd ~ Age + Weight + Height + Intervention_months_factor, data = data_scale2, subset = data_scale2$Gender == "Female" & data_scale2$PostMeno == 1 & data_scale2$MAL==1,family = binomial)
+
+pl <- c(
+  `(Intercept)` = "Intercept",
+  Intervention_months_factor1 = "6-11 months",
+  Intervention_months_factor2 = "12-17 months",
+  Intervention_months_factor3 = "18-23 months",
+  Intervention_months_factor4 = "24-29 months",
+  Intervention_months_factor5 = "30-35 months",
+  Intervention_months_factor6 = "36+ months"
+)
+
+tab_model(return_fit_preF_MAL, return_fit_postF_MAL, return_fitM_MAL, pred.labels = pl, dv.labels = c("Pre-menopausal women", "Post-menopausal women", "Men"), show.reflvl = T, title = "Donor return (on time) for donors at a rural location")
+```
+# Figure 1
+
+Figure 1 was produced in Microsoft Powerpoint.
+
+# Figure 2
+
+```{r}
+data_clean$LowFerr <- 0
+data_clean$LowFerr[data_clean$Ferritin>=15 & data_clean$Ferritin < 30] <- 1
+
+figure2M <- data.frame(matrix(NA,    # Create empty data frame
+                          nrow = 7, # we make a dataset per sex and then have one row per month group of the intervention
+                          ncol = 4)) #we need columns for the percentage hb deferral, iron deficiency and low ferritin
+colnames(figure2M) <- c("Months", "Hb", "ID", "LowFer")
+figure2M$Months <- c("0-5 months", "6-11 months", "12-17 months", "18-23 months", "24-29 months", "30-35 months", "36+ months")
+
+figure2PreF <- data.frame(matrix(NA,    # Create empty data frame
+                          nrow = 7, # we make a dataset per sex and then have one row per month group of the intervention
+                          ncol = 4)) #we need columns for the percentage hb deferral, iron deficiency and low ferritin
+colnames(figure2PreF) <- c("Months", "Hb", "ID", "LowFer")
+figure2PreF$Months <- c("0-5 months", "6-11 months", "12-17 months", "18-23 months", "24-29 months", "30-35 months", "36+ months")
+
+figure2PostF <- data.frame(matrix(NA,    # Create empty data frame
+                          nrow = 7, # we make a dataset per sex and then have one row per month group of the intervention
+                          ncol = 4)) #we need columns for the percentage hb deferral, iron deficiency and low ferritin
+colnames(figure2PostF) <- c("Months", "Hb", "ID", "LowFer")
+figure2PostF$Months <- c("0-5 months", "6-11 months", "12-17 months", "18-23 months", "24-29 months", "30-35 months", "36+ months")
+
+for (i in 1:7){
+  figure2M[i,2] <- (length(which(data_clean$Gender == "Male" & data_clean$Intervention_months_factor == (i-1) & data_clean$HbDef==1))/length(which(data_clean$Gender == "Male" & data_clean$Intervention_months_factor == (i-1))))*100
+  figure2M[i,3] <- (length(which(data_clean$Gender == "Male" & data_clean$Intervention_months_factor == (i-1) & data_clean$IronDef==1))/length(which(data_clean$Gender == "Male" & data_clean$Intervention_months_factor == (i-1))))*100
+    figure2M[i,4] <- (length(which(data_clean$Gender == "Male" & data_clean$Intervention_months_factor == (i-1) & data_clean$LowFerr ==1))/length(which(data_clean$Gender == "Male" & data_clean$Intervention_months_factor == (i-1))))*100
+    
+      figure2PreF[i,2] <- (length(which(data_clean$Gender == "Female" & data_clean$PostMeno == 0 & data_clean$Intervention_months_factor == (i-1) & data_clean$HbDef==1))/length(which(data_clean$Gender == "Female" & data_clean$PostMeno == 0 & data_clean$Intervention_months_factor == (i-1))))*100
+  figure2PreF[i,3] <- (length(which(data_clean$Gender == "Female" & data_clean$PostMeno == 0 & data_clean$Intervention_months_factor == (i-1) & data_clean$IronDef==1))/length(which(data_clean$Gender == "Female" & data_clean$PostMeno == 0 & data_clean$Intervention_months_factor == (i-1))))*100
+    figure2PreF[i,4] <- (length(which(data_clean$Gender == "Female" & data_clean$PostMeno == 0 & data_clean$Intervention_months_factor == (i-1) & data_clean$LowFerr ==1))/length(which(data_clean$Gender == "Female" &  data_clean$PostMeno == 0 & data_clean$Intervention_months_factor == (i-1))))*100
+    
+          figure2PostF[i,2] <- (length(which(data_clean$Gender == "Female" & data_clean$PostMeno == 1 & data_clean$Intervention_months_factor == (i-1) & data_clean$HbDef==1))/length(which(data_clean$Gender == "Female" & data_clean$PostMeno == 1 & data_clean$Intervention_months_factor == (i-1))))*100
+  figure2PostF[i,3] <- (length(which(data_clean$Gender == "Female" & data_clean$PostMeno == 1 & data_clean$Intervention_months_factor == (i-1) & data_clean$IronDef==1))/length(which(data_clean$Gender == "Female" & data_clean$PostMeno == 1 & data_clean$Intervention_months_factor == (i-1))))*100
+    figure2PostF[i,4] <- (length(which(data_clean$Gender == "Female" & data_clean$PostMeno == 1 & data_clean$Intervention_months_factor == (i-1) & data_clean$LowFerr ==1))/length(which(data_clean$Gender == "Female" &  data_clean$PostMeno == 1 & data_clean$Intervention_months_factor == (i-1))))*100
+}
+
+
+```

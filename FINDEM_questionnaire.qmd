@@ -74,14 +74,14 @@ prefemalest1
 
 ```{r}
 #| label: t1 postmenopausal females
-postfemalest1<-table1::table1(~ Age + Hb + Ferritin + factor(PICA) + factor(RLS) + CFQ_Total + SF_ph + SF_mh + Warmglow + CIS_Totalmean | factor(stap2), data = subset(data_t1, data_t1$Gender=="Female" & data_t1$PostMeno==1), caption = "Premenopausal females", render.continuous=c(.="Mean (SD)", .="Median [Q1, Q3]"), render.categorical=c(.="FREQ (PCT)"))
+postfemalest1<-table1::table1(~ Age + Hb + Ferritin + factor(PICA) + factor(RLS) + CFQ_Total + SF_ph + SF_mh + Warmglow + CIS_Totalmean | factor(stap2), data = subset(data_t1, data_t1$Gender=="Female" & data_t1$PostMeno==1), caption = "Postmenopausal females", render.continuous=c(.="Mean (SD)", .="Median [Q1, Q3]"), render.categorical=c(.="FREQ (PCT)"))
 postfemalest1
 ```
 
 ```{r}
 #| label: males t1
 
-malest1<-table1::table1(~ Age + Hb + Ferritin + factor(PICA) + factor(RLS) + CFQ_Total + SF_ph + SF_mh + Warmglow + CIS_Totalmean | factor(stap2), data = subset(data_t1, data_t1$Gender=="Male"), caption = "Premenopausal females", render.continuous=c(.="Mean (SD)", .="Median [Q1, Q3]"), render.categorical=c(.="FREQ (PCT)"))
+malest1<-table1::table1(~ Age + Hb + Ferritin + factor(PICA) + factor(RLS) + CFQ_Total + SF_ph + SF_mh + Warmglow + CIS_Totalmean | factor(stap2), data = subset(data_t1, data_t1$Gender=="Male"), caption = "Males", render.continuous=c(.="Mean (SD)", .="Median [Q1, Q3]"), render.categorical=c(.="FREQ (PCT)"))
 malest1
 ```
 
