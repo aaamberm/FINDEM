@@ -39,7 +39,7 @@ We load and scale the data.
 
 ```{r, collapse = T}
 #| label: process data
-data_clean <- read_sav("data/Final_survey.sav") 
+data_clean <- read_sav("~/Amber/Data/FINDEM/Final_survey.sav") 
 data_scale <- data_clean %>% dplyr::select(-Einnummer, -Cluster, -Date, -Timepoint, -Meetweek) %>% 
   mutate(Gender = factor(Gender) %>% fct_recode("Male" = "1", "Female" = "2")) %>%
   mutate(PICA = factor(PICA) %>% fct_recode("Yes" = "1", "No" = "0")) %>% 

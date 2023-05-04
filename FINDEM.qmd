@@ -35,7 +35,7 @@ We load and clean the data and present a summary.
 
 ```{r, collapse = T}
 #| label: process data
-data_raw <- readRDS("data/FINDEM_data.rds")
+data_raw <- readRDS("~/Amber/Data/FINDEM/FINDEM_data.rds")
 #clean data
 data_clean <- data_raw%>% 
   mutate(HbDef = factor(case_when(HbGoedgekeurd == 0 ~ 1, HbGoedgekeurd == 1 ~ 0))) %>% 
@@ -63,7 +63,7 @@ summary(data_clean)
 #| label: recode data
 data_clean<-data_clean%>%mutate(Hb = replace(Hb, Hb == 999, NA))
 #save the data as an Rdta file
-save(data_clean, file = "data/findem_clean.Rdta")
+save(data_clean, file = "~/Amber/Data/FINDEM/findem_clean.Rdta")
 ```
 
 Now, we can have a quick look at the cleaned data:
@@ -76,7 +76,7 @@ Now, we can have a quick look at the cleaned data:
 #| layout-ncol: 2
 data_clean %>%
   na.omit() %>% 
-  dplyr::select(-KeyID, -stap2, -Meetweek, -Cluster, -HbDef, -Timepoint, -Step, -Weight, -Height, -Intervention_months,-COVID, -Donatiedatum, -ReturnOpTijd, -Intervention_months2, -Intervention_months_factor, -Step) %>%
+  dplyr::select(-KeyID, -stap2, -Meetweek, -Cluster, -HbDef, -Timepoint, -Step, -Weight, -Height, -Intervention_months,-COVID, -Donatiedatum, -ReturnOpTijd, -Intervention_months2, -Intervention_months_factor, -Step, -Donorcentrum_Cluster, -Donatiecentrumcode) %>%
   GGally::ggpairs(mapping = aes(fill    = Intervention,
                               col       = Intervention,
                               alpha     = 0.05),
@@ -118,7 +118,7 @@ We present the data stratified by sex and menopausal status.
 #| label: preprocess t1 data
 #for table 1, we only use participants that were assigned to a cluster. Since we present the baseline characteristics of our study, we select only measurement week 0. 
 #we load additional data that counts the number of donations
-data_teller <- read_sav("data/baseline_teller.sav")
+data_teller <- read_sav("~/Amber/Data/FINDEM/baseline_teller.sav")
 data_t1 <- data_clean%>% filter(!is.na(Cluster), Meetweek==0) 
 data_t1 <- merge(data_t1, data_teller,  by = "KeyID")
 data_t1 <- data_t1 %>% mutate(stap3 = as.factor(stap2), stap3 = recode_factor(stap3, "2.1"="2","2.2"="2", "3.1"="3", "3.2"="3"), stap3 = factor(stap3,levels = c("1", "2", "3", "4")), Ndonation = TotaalOpBaseline, Ndonation = replace(Ndonation, Ndonation>0, 1), Ndonation = recode_factor(Ndonation, `1`="0", `0`= "1"))
