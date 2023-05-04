@@ -26,6 +26,7 @@ library(sjPlot)          # for model outputs
 library(car)             # to calculate VIF
 library(broom)           # for function augment
 library(stringr)
+library(reshape)
 
 setwd("~/Amber/FINDEM") 
 ```
@@ -47,13 +48,12 @@ data_clean <- data_raw%>%
   mutate(Intervention_months =  if_else(Intervention_months < 0, 0, Intervention_months)) %>% 
   mutate(Intervention = factor(case_when(Intervention_months == 0 ~ 0, TRUE & !is.na(Intervention_months)~ 1)))%>% 
   mutate(PostMeno = factor(case_when(Gender == "Female" & LeeftijdBijDOnatie < 45 ~ 0, Gender== "Female" & LeeftijdBijDOnatie >= 45 ~ 1))) %>%
-  rename(Ferritin = Ferritine_FINDEM, Age = LeeftijdBijDOnatie, Weight = Gewicht, Height = Lengte)  %>% 
+  dplyr::rename(Ferritin = Ferritine_FINDEM, Age = LeeftijdBijDOnatie, Weight = Gewicht, Height = Lengte)  %>% 
   mutate(IronDef = factor(case_when(Ferritin >= 15 ~ 0, Ferritin < 15 ~ 1)))%>% 
   dplyr::select(-HbGoedgekeurd, -Geslacht)%>%
   mutate(Intervention_months2 =  if_else(Intervention_months < 6, 0, Intervention_months))%>%
   mutate(Intervention_months_factor = factor(case_when(Intervention_months == 0 ~ 0, Intervention_months == 1 ~ 0, Intervention_months == 5 ~ 0, Intervention_months == 8 ~ 1, Intervention_months == 10 ~ 1, Intervention_months == 12 ~ 2, Intervention_months == 13 ~ 2,Intervention_months == 16 ~ 2,Intervention_months == 18 ~ 3, Intervention_months == 20 ~ 3, Intervention_months == 24 ~ 4, Intervention_months == 25 ~ 4, Intervention_months == 30 ~ 5, Intervention_months == 36 ~ 6))) %>%
   mutate(COVID = factor(case_when(Donatiedatum < "2019-10-01" ~ 0, Donatiedatum >= "2019-10-01" ~ 1)))
-
 summary(data_clean)
 
 data_clean<-data_clean%>%mutate(Hb = replace(Hb, Hb == 999, NA))%>%filter(!is.na(Cluster))
@@ -238,7 +238,7 @@ Figure 1 was produced in Microsoft Powerpoint.
 
 # Figure 2
 
-```{r}
+```{r, warnings=F, errors=F, messages=F}
 data_clean$LowFerr <- 0
 data_clean$LowFerr[data_clean$Ferritin>=15 & data_clean$Ferritin < 30] <- 1
 
@@ -246,33 +246,113 @@ figure2M <- data.frame(matrix(NA,    # Create empty data frame
                           nrow = 7, # we make a dataset per sex and then have one row per month group of the intervention
                           ncol = 4)) #we need columns for the percentage hb deferral, iron deficiency and low ferritin
 colnames(figure2M) <- c("Months", "Hb", "ID", "LowFer")
-figure2M$Months <- c("0-5 months", "6-11 months", "12-17 months", "18-23 months", "24-29 months", "30-35 months", "36+ months")
+figure2M$Months <- c("0-5", "6-11", "12-17", "18-23", "24-29", "30-35", "36+")
 
 figure2PreF <- data.frame(matrix(NA,    # Create empty data frame
                           nrow = 7, # we make a dataset per sex and then have one row per month group of the intervention
                           ncol = 4)) #we need columns for the percentage hb deferral, iron deficiency and low ferritin
 colnames(figure2PreF) <- c("Months", "Hb", "ID", "LowFer")
-figure2PreF$Months <- c("0-5 months", "6-11 months", "12-17 months", "18-23 months", "24-29 months", "30-35 months", "36+ months")
+figure2PreF$Months <- c("0-5", "6-11", "12-17", "18-23", "24-29", "30-35", "36+")
 
 figure2PostF <- data.frame(matrix(NA,    # Create empty data frame
                           nrow = 7, # we make a dataset per sex and then have one row per month group of the intervention
                           ncol = 4)) #we need columns for the percentage hb deferral, iron deficiency and low ferritin
 colnames(figure2PostF) <- c("Months", "Hb", "ID", "LowFer")
-figure2PostF$Months <- c("0-5 months", "6-11 months", "12-17 months", "18-23 months", "24-29 months", "30-35 months", "36+ months")
+figure2PostF$Months <- c("0-5", "6-11", "12-17", "18-23", "24-29", "30-35", "36+")
 
 for (i in 1:7){
   figure2M[i,2] <- (length(which(data_clean$Gender == "Male" & data_clean$Intervention_months_factor == (i-1) & data_clean$HbDef==1))/length(which(data_clean$Gender == "Male" & data_clean$Intervention_months_factor == (i-1))))*100
   figure2M[i,3] <- (length(which(data_clean$Gender == "Male" & data_clean$Intervention_months_factor == (i-1) & data_clean$IronDef==1))/length(which(data_clean$Gender == "Male" & data_clean$Intervention_months_factor == (i-1))))*100
     figure2M[i,4] <- (length(which(data_clean$Gender == "Male" & data_clean$Intervention_months_factor == (i-1) & data_clean$LowFerr ==1))/length(which(data_clean$Gender == "Male" & data_clean$Intervention_months_factor == (i-1))))*100
     
+    mdat = melt(figure2M, id.vars=c("Months"),
+            measure.vars=c("ID", "LowFer"))
+    mdat$Months <- factor(mdat$Months, levels = c("0-5", "6-11", "12-17", "18-23", "24-29", "30-35", "36+"))
+    mdat <- merge(mdat, figure2M[,1:2], by = "Months")
+    mdat[c(2,4,6, 8, 10,14), 4]<-NA
+    mdat$Sex <- "Males"
+    
       figure2PreF[i,2] <- (length(which(data_clean$Gender == "Female" & data_clean$PostMeno == 0 & data_clean$Intervention_months_factor == (i-1) & data_clean$HbDef==1))/length(which(data_clean$Gender == "Female" & data_clean$PostMeno == 0 & data_clean$Intervention_months_factor == (i-1))))*100
   figure2PreF[i,3] <- (length(which(data_clean$Gender == "Female" & data_clean$PostMeno == 0 & data_clean$Intervention_months_factor == (i-1) & data_clean$IronDef==1))/length(which(data_clean$Gender == "Female" & data_clean$PostMeno == 0 & data_clean$Intervention_months_factor == (i-1))))*100
     figure2PreF[i,4] <- (length(which(data_clean$Gender == "Female" & data_clean$PostMeno == 0 & data_clean$Intervention_months_factor == (i-1) & data_clean$LowFerr ==1))/length(which(data_clean$Gender == "Female" &  data_clean$PostMeno == 0 & data_clean$Intervention_months_factor == (i-1))))*100
     
+    mdatPreF = melt(figure2PreF, id.vars=c("Months"),
+            measure.vars=c("ID", "LowFer"))
+    mdatPreF$Months <- factor(mdatPreF$Months, levels = c("0-5", "6-11", "12-17", "18-23", "24-29", "30-35", "36+"))
+    mdatPreF <- merge(mdatPreF, figure2PreF[,1:2], by = "Months")
+    mdatPreF[c(2,4,6, 8, 10,14), 4]<-NA
+    mdatPreF$Sex <- "Premenopausal females"
           figure2PostF[i,2] <- (length(which(data_clean$Gender == "Female" & data_clean$PostMeno == 1 & data_clean$Intervention_months_factor == (i-1) & data_clean$HbDef==1))/length(which(data_clean$Gender == "Female" & data_clean$PostMeno == 1 & data_clean$Intervention_months_factor == (i-1))))*100
   figure2PostF[i,3] <- (length(which(data_clean$Gender == "Female" & data_clean$PostMeno == 1 & data_clean$Intervention_months_factor == (i-1) & data_clean$IronDef==1))/length(which(data_clean$Gender == "Female" & data_clean$PostMeno == 1 & data_clean$Intervention_months_factor == (i-1))))*100
     figure2PostF[i,4] <- (length(which(data_clean$Gender == "Female" & data_clean$PostMeno == 1 & data_clean$Intervention_months_factor == (i-1) & data_clean$LowFerr ==1))/length(which(data_clean$Gender == "Female" &  data_clean$PostMeno == 1 & data_clean$Intervention_months_factor == (i-1))))*100
+    
+    mdatPostF = melt(figure2PostF, id.vars=c("Months"),
+            measure.vars=c("ID", "LowFer"))
+    mdatPostF$Months <- factor(mdatPostF$Months, levels = c("0-5", "6-11", "12-17", "18-23", "24-29", "30-35", "36+"))
+    mdatPostF <- merge(mdatPostF, figure2PreF[,1:2], by = "Months")
+    mdatPostF[c(2,4,6, 8, 10,14), 4]<-NA
+    mdatPostF$Sex <- "Postmenopausal females"
+
 }
 
+mdat_total <- rbind(mdat, mdatPreF, mdatPostF)
+```
+
+```{r, warning=FALSE, error=FALSE, message=FALSE}
+#| label: make figures
+
+# Function to scale secondary axis
+scale_function <- function(x, scale, shift){
+  return ((x)*scale - shift)
+}
+
+# Function to scale secondary variable values
+inv_scale_function <- function(x, scale, shift){
+  return ((x + shift)/scale)
+}
+sex <- c("Males", "Premenopausal females", "Postmenopausal females")
+
+for(i in sex){
+  max_first  <- max(mdat_total$value)+20   # Specify max of first y axis
+max_second <- max(mdat_total$Hb, na.rm=T) # Specify max of second y axis
+min_first  <- min(mdat_total$value)+20   # Specify min of first y axis
+min_second <- min(mdat_total$Hb, na.rm=T) # Specify min of second y axis
+
+# scale and shift variables calculated based on desired mins and maxes
+scale = max_second/max_first
+shift = 0 #min_first - min_second
+
+plot <- ggplot(data=mdat_total[mdat_total$Sex==i,]) + 
+  geom_bar(aes(x=Months, y=value, fill = variable), stat="identity", width = 0.4, position = "stack") + 
+  xlab("Time since implementation (months)")+ 
+  ylab("Percentage")+
+  geom_bar(aes(x=Months, y=inv_scale_function(Hb, scale, shift)), stat = "identity", position = position_nudge(x = 0.5), width = 0.4, col = "grey", fill = "grey")+
+  ggtitle(paste0(i)) + 
+  scale_y_continuous(name = "Donors with low iron (%)", sec.axis = sec_axis(~scale_function(., scale, shift), name="Donors deferred based on Hb (%)"))+ 
+  theme(axis.title.y = element_text(color = "black", size=10),
+        axis.title.y.right = element_text(color = "grey", size=10))
+print(plot)
+}
+```
+```{r}
+plot <- ggplot(data=mdat_total) + 
+  geom_bar(aes(x=Months, y=value, fill = variable), stat="identity", width = 0.4, position = "stack") + scale_fill_manual(values = c("ID" = "#ff9700", "LowFer"= "#1cdbfc"), labels = c("Deficient (<15 ng/mL)", "Low (<30 ng/mL)"), name="Ferritin")+
+  xlab("Time since implementation (months)")+ 
+  ylab("Percentage")+
+  geom_bar(aes(x=Months, y=inv_scale_function(Hb, scale, shift), color = "grey"), stat = "identity", position = position_nudge(x = 0.5), width = 0.35, fill = "grey") + scale_color_manual(values = c("grey" = "grey"), labels = c("Hb < 12.5/13.5 g/dL (F/M)"), name="Deferral")+
+  ggtitle("Donors presenting with low hemoglobin and iron")+
+  scale_y_continuous(name = "Donors with low iron (%)", sec.axis = sec_axis(~scale_function(., scale, shift), name="Donors deferred based on Hb"))+ 
+  theme(axis.title.y = element_text(color = "black", size=10),
+        axis.title.y.right = element_text(color = "grey", size=10))+
+  facet_grid(.~ Sex) + 
+  theme(panel.background = element_rect(fill = "white",
+                                    colour = "white",
+                                    size = 0.5, linetype = "solid"),
+    panel.grid.major = element_line(size = 0.5, linetype = 'solid',
+                                    colour = "#ededed"), 
+    panel.grid.minor = element_line(size = 0.25, linetype = 'solid',
+                                    colour = "#ededed"))
+
+ggsave(plot, width = 12, height = 5, file = "~/Amber/FINDEM/figure2.jpg")
 
 ```
