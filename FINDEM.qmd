@@ -51,7 +51,7 @@ data_clean <- data_raw%>%
   dplyr::select(-HbGoedgekeurd, -Geslacht, -Einnummer)%>%
   mutate(Intervention_months2 =  if_else(Intervention_months < 6, 0, Intervention_months))%>%
   mutate(Intervention_months_factor = factor(case_when(Intervention_months == 0 ~ 0, Intervention_months == 1 ~ 0, Intervention_months == 5 ~ 0, Intervention_months == 8 ~ 1, Intervention_months == 10 ~ 1, Intervention_months == 12 ~ 2, Intervention_months == 13 ~ 2,Intervention_months == 16 ~ 2,Intervention_months == 18 ~ 3, Intervention_months == 20 ~ 3, Intervention_months == 24 ~ 4, Intervention_months == 25 ~ 4, Intervention_months == 30 ~ 5, Intervention_months == 36 ~ 6))) %>%
-  mutate(COVID = factor(case_when(Donatiedatum < "2019-10-01" ~ 0, Donatiedatum >= "2019-10-01" ~ 1)))
+  mutate(COVID = factor(case_when(Donatiedatum < "2019-10-01" ~ 0, Donatiedatum >= "2019-10-01" ~ 1))) %>% mutate(Hb = Hb/0.6206)
 
 ## Quick view
 summary(data_clean)
