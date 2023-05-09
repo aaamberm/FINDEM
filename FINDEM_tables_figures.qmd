@@ -337,14 +337,14 @@ plot <- ggplot(data=mdat_total[mdat_total$Sex==i,]) +
 print(plot)
 }
 ```
-```{r}
+```{r, warning=F, message=F}
 plot <- ggplot(data=mdat_total) + 
   geom_bar(aes(x=Months, y=value, fill = variable), stat="identity", width = 0.4, position = "stack") + scale_fill_manual(values = c("ID" = "#ff9700", "LowFer"= "#1cdbfc"), labels = c("Deficient (<15 ng/mL)", "Low (<30 ng/mL)"), name="Ferritin")+
   xlab("Time since implementation (months)")+ 
   ylab("Percentage")+
   geom_bar(aes(x=Months, y=inv_scale_function(Hb, scale, shift), color = "grey"), stat = "identity", position = position_nudge(x = 0.5), width = 0.35, fill = "grey") + scale_color_manual(values = c("grey" = "grey"), labels = c("Hb < 12.5/13.5 g/dL (F/M)"), name="Deferral")+
   ggtitle("Donors presenting with low hemoglobin and iron")+
-  scale_y_continuous(name = "Donors with low iron (%)", sec.axis = sec_axis(~scale_function(., scale, shift), name="Donors deferred based on Hb"))+ 
+  scale_y_continuous(name = "Donors with low iron (%)", sec.axis = sec_axis(~scale_function(., scale, shift), name="Donors deferred based on Hb (%)"))+ 
   theme(axis.title.y = element_text(color = "black", size=10),
         axis.title.y.right = element_text(color = "grey", size=10))+
   facet_grid(.~ Sex) + 
