@@ -53,15 +53,16 @@ data_clean <- data_raw%>%
   mutate(Intervention_months_factor = factor(case_when(Intervention_months == 0 ~ 0, Intervention_months == 1 ~ 0, Intervention_months == 5 ~ 0, Intervention_months == 8 ~ 1, Intervention_months == 10 ~ 1, Intervention_months == 12 ~ 2, Intervention_months == 13 ~ 2,Intervention_months == 16 ~ 2,Intervention_months == 18 ~ 3, Intervention_months == 20 ~ 3, Intervention_months == 24 ~ 4, Intervention_months == 25 ~ 4, Intervention_months == 30 ~ 5, Intervention_months == 36 ~ 6))) %>%
   mutate(COVID = factor(case_when(Donatiedatum < "2019-10-01" ~ 0, Donatiedatum >= "2019-10-01" ~ 1))) %>% mutate(Hb = Hb/0.6206)
 
+
 ## Quick view
 summary(data_clean)
 ```
 
- Ferritin missing data is expected due to errors on the analyser and samples not handled properly. Hb has a maximum value of of 999, ferritin of \~2000. Hb maximum of 999 is an NA, technically ferritin maximum value is possible. We adjust the data to account for this.
 
 ```{r}
 #| label: recode data
-data_clean<-data_clean%>%mutate(Hb = replace(Hb, Hb == 999, NA))
+data_clean<-data_clean%>%mutate(Hb = replace(Hb, Hb == (999/0.6206), NA))
+
 #save the data as an Rdta file
 save(data_clean, file = "~/Amber/Data/FINDEM/findem_clean.Rdta")
 ```
