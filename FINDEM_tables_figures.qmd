@@ -346,7 +346,7 @@ plot <- ggplot(data=mdat_total[mdat_total$Sex==i,]) +
   ggtitle(paste0(i)) + 
   scale_y_continuous(name = "Donors with low iron (%)", sec.axis = sec_axis(~scale_function(., scale, shift), name="Donors deferred based on Hb (%)"))+ 
   theme(axis.title.y = element_text(color = "black", size=10),
-        axis.title.y.right = element_text(color = "grey", size=10))
+        axis.title.y.right = element_text(color = "black", size=10))
 print(plot)
 }
 ```
@@ -359,7 +359,7 @@ plot <- ggplot(data=mdat_total) +
   ggtitle("Donors presenting with low hemoglobin and iron")+
   scale_y_continuous(name = "Donors with low iron (%)", sec.axis = sec_axis(~scale_function(., scale, shift), name="Donors deferred based on Hb (%)"))+ 
   theme(axis.title.y = element_text(color = "black", size=10),
-        axis.title.y.right = element_text(color = "grey", size=10))+
+        axis.title.y.right = element_text(color = "black", size=10))+
   facet_grid(.~ Sex) + 
   theme(panel.background = element_rect(fill = "white",
                                     colour = "white",
