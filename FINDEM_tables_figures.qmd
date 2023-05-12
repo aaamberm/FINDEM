@@ -92,9 +92,9 @@ data_scale$FerritinLog10 <- log10(data_scale$Ferritin)
 For ferritin $\le$ 30:
 
 ```{r}
-return_fitM_b30 <- glm(formula = ReturnOpTijd ~ Age + Weight + Height + Intervention_months_factor, data = data_scale, subset = data_scale$Gender == "Male" & data_scale$Ferritin <= 30,family = binomial)
-return_fit_preF_b30 <- glm(formula = ReturnOpTijd ~ Age + Weight + Height + Intervention_months_factor, data = data_scale, subset = data_scale$Gender == "Female" & data_scale$PostMeno == 0 & data_scale$Ferritin <= 30,family = binomial)
-return_fit_postF_b30 <- glm(formula = ReturnOpTijd ~ Age + Weight + Height + Intervention_months_factor, data = data_scale, subset = data_scale$Gender == "Female" & data_scale$PostMeno == 1 & data_scale$Ferritin <= 30,family = binomial)
+return_fitM_b30 <- glm(formula = ReturnOpTijd ~ Age + Weight + Height + COVID +  Intervention_months_factor, data = data_scale, subset = data_scale$Gender == "Male" & data_scale$Ferritin <= 30,family = binomial)
+return_fit_preF_b30 <- glm(formula = ReturnOpTijd ~ Age + Weight + Height +COVID +  Intervention_months_factor, data = data_scale, subset = data_scale$Gender == "Female" & data_scale$PostMeno == 0 & data_scale$Ferritin <= 30,family = binomial)
+return_fit_postF_b30 <- glm(formula = ReturnOpTijd ~ Age + Weight + Height + COVID +  Intervention_months_factor, data = data_scale, subset = data_scale$Gender == "Female" & data_scale$PostMeno == 1 & data_scale$Ferritin <= 30,family = binomial)
 
 pl <- c(
   `(Intercept)` = "Intercept",
@@ -111,9 +111,9 @@ tab_model(return_fit_preF_b30, return_fit_postF_b30, return_fitM_b30, pred.label
 
 For ferritin \> 30:
 ```{r}
-return_fitM_a30 <- glm(formula = ReturnOpTijd ~ Age + Weight + Height + Intervention_months_factor, data = data_scale, subset = data_scale$Gender == "Male" & data_scale$Ferritin > 30,family = binomial)
-return_fit_preF_a30 <- glm(formula = ReturnOpTijd ~ Age + Weight + Height + Intervention_months_factor, data = data_scale, subset = data_scale$Gender == "Female" & data_scale$PostMeno == 0 & data_scale$Ferritin > 30,family = binomial)
-return_fit_postF_a30 <- glm(formula = ReturnOpTijd ~ Age + Weight + Height + Intervention_months_factor, data = data_scale, subset = data_scale$Gender == "Female" & data_scale$PostMeno == 1 & data_scale$Ferritin > 30,family = binomial)
+return_fitM_a30 <- glm(formula = ReturnOpTijd ~ Age + Weight + Height +COVID +  Intervention_months_factor, data = data_scale, subset = data_scale$Gender == "Male" & data_scale$Ferritin > 30,family = binomial)
+return_fit_preF_a30 <- glm(formula = ReturnOpTijd ~ Age + Weight + Height +COVID +  Intervention_months_factor, data = data_scale, subset = data_scale$Gender == "Female" & data_scale$PostMeno == 0 & data_scale$Ferritin > 30,family = binomial)
+return_fit_postF_a30 <- glm(formula = ReturnOpTijd ~ Age + Weight + Height +COVID +  Intervention_months_factor, data = data_scale, subset = data_scale$Gender == "Female" & data_scale$PostMeno == 1 & data_scale$Ferritin > 30,family = binomial)
 
 pl <- c(
   `(Intercept)` = "Intercept",
@@ -137,9 +137,9 @@ We have conducted a sensitivity analysis on the donor return outcome, separating
 For donors that were deferred based on Hb levels: 
 
 ```{r}
-return_fitM_HbDef <- glm(formula = ReturnOpTijd ~ Age + Weight + Height + Intervention_months_factor, data = data_scale, subset = data_scale$Gender == "Male" & data_scale$HbDef == 1,family = binomial)
-return_fit_preF_HbDef <- glm(formula = ReturnOpTijd ~ Age + Weight + Height + Intervention_months_factor, data = data_scale, subset = data_scale$Gender == "Female" & data_scale$PostMeno == 0 & data_scale$HbDef == 1,family = binomial)
-return_fit_postF_HbDef <- glm(formula = ReturnOpTijd ~ Age + Weight + Height + Intervention_months_factor, data = data_scale, subset = data_scale$Gender == "Female" & data_scale$PostMeno == 1 & data_scale$HbDef == 1,family = binomial)
+return_fitM_HbDef <- glm(formula = ReturnOpTijd ~ Age + Weight + Height +COVID +  Intervention_months_factor, data = data_scale, subset = data_scale$Gender == "Male" & data_scale$HbDef == 1,family = binomial)
+return_fit_preF_HbDef <- glm(formula = ReturnOpTijd ~ Age + Weight + Height +COVID +  Intervention_months_factor, data = data_scale, subset = data_scale$Gender == "Female" & data_scale$PostMeno == 0 & data_scale$HbDef == 1,family = binomial)
+return_fit_postF_HbDef <- glm(formula = ReturnOpTijd ~ Age + Weight + Height +COVID +  Intervention_months_factor, data = data_scale, subset = data_scale$Gender == "Female" & data_scale$PostMeno == 1 & data_scale$HbDef == 1,family = binomial)
 
 pl <- c(
   `(Intercept)` = "Intercept",
@@ -157,9 +157,9 @@ tab_model(return_fit_preF_HbDef, return_fit_postF_HbDef, return_fitM_HbDef, pred
 For donors that were deferred based on ferritin levels:
 
 ```{r}
-return_fitM_b30 <- glm(formula = ReturnOpTijd ~ Age + Weight + Height + Intervention_months_factor, data = data_scale, subset = data_scale$Gender == "Male" & data_scale$Ferritin <= 30,family = binomial)
-return_fit_preF_b30 <- glm(formula = ReturnOpTijd ~ Age + Weight + Height + Intervention_months_factor, data = data_scale, subset = data_scale$Gender == "Female" & data_scale$PostMeno == 0 & data_scale$Ferritin <= 30,family = binomial)
-return_fit_postF_b30 <- glm(formula = ReturnOpTijd ~ Age + Weight + Height + Intervention_months_factor, data = data_scale, subset = data_scale$Gender == "Female" & data_scale$PostMeno == 1 & data_scale$Ferritin <= 30,family = binomial)
+return_fitM_b30 <- glm(formula = ReturnOpTijd ~ Age + Weight + Height +COVID +  Intervention_months_factor, data = data_scale, subset = data_scale$Gender == "Male" & data_scale$Ferritin <= 30,family = binomial)
+return_fit_preF_b30 <- glm(formula = ReturnOpTijd ~ Age + Weight + Height +COVID +  Intervention_months_factor, data = data_scale, subset = data_scale$Gender == "Female" & data_scale$PostMeno == 0 & data_scale$Ferritin <= 30,family = binomial)
+return_fit_postF_b30 <- glm(formula = ReturnOpTijd ~ Age + Weight + Height +COVID +  Intervention_months_factor, data = data_scale, subset = data_scale$Gender == "Female" & data_scale$PostMeno == 1 & data_scale$Ferritin <= 30,family = binomial)
 
 pl <- c(
   `(Intercept)` = "Intercept",
@@ -176,7 +176,7 @@ tab_model(return_fit_preF_b30, return_fit_postF_b30, return_fitM_b30, pred.label
 
 # Table S4
 
-We stratify the analysis of the donor return outcome by urban vs. rural donation locations. Urban locations are defined as fixed donation centers, rural locations are defined as mobile donation centers. 
+We stratify the analysis of the donor return outcome by fixed vs. mobile donation locations. 
 
 ```{r, error=F, message=F, warning=F}
 #we first need to find whether a location was done at a mobile location. We find this through linking our data to the donation database.
@@ -187,12 +187,12 @@ data_scale2 <- merge(data_scale, alldonations, by.x = "Einnummer", by.y = "EINnu
 data_scale2 <- data_scale2 %>% mutate(MAL = grepl("ML", Donatiecentrumcode.y)) %>% mutate(MAL = case_when(MAL == FALSE ~ 0,MAL == TRUE ~ 1 ))
 ```
 
-For donors that donated in an urban center:
+For donors that donated in an fixed center:
 
 ```{r, error=F, message=F, warning=F}
-return_fitM_AL <- glm(formula = ReturnOpTijd ~ Age + Weight + Height + Intervention_months_factor, data = data_scale2, subset = data_scale2$Gender == "Male" & data_scale2$MAL ==0,family = binomial)
-return_fit_preF_AL <- glm(formula = ReturnOpTijd ~ Age + Weight + Height + Intervention_months_factor, data = data_scale2, subset = data_scale2$Gender == "Female" & data_scale2$PostMeno == 0 & data_scale2$MAL==0,family = binomial)
-return_fit_postF_AL <- glm(formula = ReturnOpTijd ~ Age + Weight + Height + Intervention_months_factor, data = data_scale2, subset = data_scale2$Gender == "Female" & data_scale2$PostMeno == 1 & data_scale2$MAL==0,family = binomial)
+return_fitM_AL <- glm(formula = ReturnOpTijd ~ Age + Weight + Height +COVID +  Intervention_months_factor, data = data_scale2, subset = data_scale2$Gender == "Male" & data_scale2$MAL ==0,family = binomial)
+return_fit_preF_AL <- glm(formula = ReturnOpTijd ~ Age + Weight + Height +COVID +  Intervention_months_factor, data = data_scale2, subset = data_scale2$Gender == "Female" & data_scale2$PostMeno == 0 & data_scale2$MAL==0,family = binomial)
+return_fit_postF_AL <- glm(formula = ReturnOpTijd ~ Age + Weight + Height +COVID +  Intervention_months_factor, data = data_scale2, subset = data_scale2$Gender == "Female" & data_scale2$PostMeno == 1 & data_scale2$MAL==0,family = binomial)
 
 pl <- c(
   `(Intercept)` = "Intercept",
@@ -204,15 +204,15 @@ pl <- c(
   Intervention_months_factor6 = "36+ months"
 )
 
-tab_model(return_fit_preF_AL, return_fit_postF_AL, return_fitM_AL, pred.labels = pl, dv.labels = c("Pre-menopausal women", "Post-menopausal women", "Men"), show.reflvl = T, title = "Donor return (on time) for donors at an urban locatoin")
+tab_model(return_fit_preF_AL, return_fit_postF_AL, return_fitM_AL, pred.labels = pl, dv.labels = c("Pre-menopausal women", "Post-menopausal women", "Men"), show.reflvl = T, title = "Donor return (on time) for donors at an fixed location")
 ```
 
-For donors that donated at a rural location:
+For donors that donated at a mobile location:
 
 ```{r}
-return_fitM_MAL <- glm(formula = ReturnOpTijd ~ Age + Weight + Height + Intervention_months_factor, data = data_scale2, subset = data_scale2$Gender == "Male" & data_scale2$MAL ==1,family = binomial)
-return_fit_preF_MAL <- glm(formula = ReturnOpTijd ~ Age + Weight + Height + Intervention_months_factor, data = data_scale2, subset = data_scale2$Gender == "Female" & data_scale2$PostMeno == 0 & data_scale2$MAL==1,family = binomial)
-return_fit_postF_MAL <- glm(formula = ReturnOpTijd ~ Age + Weight + Height + Intervention_months_factor, data = data_scale2, subset = data_scale2$Gender == "Female" & data_scale2$PostMeno == 1 & data_scale2$MAL==1,family = binomial)
+return_fitM_MAL <- glm(formula = ReturnOpTijd ~ Age + Weight + Height +COVID +  Intervention_months_factor, data = data_scale2, subset = data_scale2$Gender == "Male" & data_scale2$MAL ==1,family = binomial)
+return_fit_preF_MAL <- glm(formula = ReturnOpTijd ~ Age + Weight + Height +COVID +  Intervention_months_factor, data = data_scale2, subset = data_scale2$Gender == "Female" & data_scale2$PostMeno == 0 & data_scale2$MAL==1,family = binomial)
+return_fit_postF_MAL <- glm(formula = ReturnOpTijd ~ Age + Weight + Height +COVID +  Intervention_months_factor, data = data_scale2, subset = data_scale2$Gender == "Female" & data_scale2$PostMeno == 1 & data_scale2$MAL==1,family = binomial)
 
 pl <- c(
   `(Intercept)` = "Intercept",
@@ -224,7 +224,7 @@ pl <- c(
   Intervention_months_factor6 = "36+ months"
 )
 
-tab_model(return_fit_preF_MAL, return_fit_postF_MAL, return_fitM_MAL, pred.labels = pl, dv.labels = c("Pre-menopausal women", "Post-menopausal women", "Men"), show.reflvl = T, title = "Donor return (on time) for donors at a rural location")
+tab_model(return_fit_preF_MAL, return_fit_postF_MAL, return_fitM_MAL, pred.labels = pl, dv.labels = c("Pre-menopausal women", "Post-menopausal women", "Men"), show.reflvl = T, title = "Donor return (on time) for donors at a mobile location")
 ```
 # Table S5
 

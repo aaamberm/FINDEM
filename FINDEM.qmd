@@ -490,6 +490,26 @@ pl <- c(
 tab_model(returnOT_fit_preF, returnOT_fit_postF, returnOT_fitM, pred.labels = pl, dv.labels = c("Pre-menopausal women", "Post-menopausal women", "Men"), show.reflvl = T, title = "Donor return (on time)")
 ```
 
+### Donor return adjusted for COVID
+```{r, message=F, error=F}
+#| label: log reg return on time including covid
+returnOT_fitM <- glm(formula = ReturnOpTijd ~ Age + Weight + Height + COVID + Intervention_months_factor, data = data_scale, subset = data_scale$Gender == "Male",family = binomial)
+returnOT_fit_preF <- glm(formula = ReturnOpTijd ~ Age + Weight + Height + COVID + Intervention_months_factor, data = data_scale, subset = data_scale$Gender == "Female" & data_scale$PostMeno == 0,family = binomial)
+returnOT_fit_postF <- glm(formula = ReturnOpTijd ~ Age + Weight + Height + COVID + Intervention_months_factor, data = data_scale, subset = data_scale$Gender == "Female" & data_scale$PostMeno == 1,family = binomial)
+
+pl <- c(
+  `(Intercept)` = "Intercept",
+  Intervention_months_factor1 = "6-11 months",
+  Intervention_months_factor2 = "12-17 months",
+  Intervention_months_factor3 = "18-23 months",
+  Intervention_months_factor4 = "24-29 months",
+  Intervention_months_factor5 = "30-35 months",
+  Intervention_months_factor6 = "36+ months"
+)
+
+tab_model(returnOT_fit_preF, returnOT_fit_postF, returnOT_fitM, pred.labels = pl, dv.labels = c("Pre-menopausal women", "Post-menopausal women", "Men"), show.reflvl = T, title = "Donor return (on time)")
+```
+
 ## Model assumptions
 
 ### Hb levels
