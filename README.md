@@ -5,7 +5,7 @@
 In this repository, you will find all analysis files that were used to
 analyse the results of the FIND'EM trial conducted by Dutch blood bank
 Sanquin. The trial was registered in the Dutch trial registry (NTR6738)
-on September 29th,, 2017
+on September 29th, 2017
 (<https://trialsearch.who.int/Trial2.aspx?TrialID=NTR6738>).
 
 ## Abstract
