@@ -426,7 +426,7 @@ p1 <- ggplot(data.forestplot[data.forestplot$outcome=="Ferritin" | data.forestpl
   geom_hline(yintercept = 0, color = "#ff9700", size = 0.35) +
   scale_shape_manual(values = c(1, 16)) +
   geom_point() + coord_flip() + scale_x_discrete(breaks = c("Intervention_months_factor1", "Intervention_months_factor2", "Intervention_months_factor3", "Intervention_months_factor4", "Intervention_months_factor5", "Intervention_months_factor6"),
-                           labels = c("6-11 months", "12-17 months", "18-23 months", "24-29 months", "30-35 months", "36+ months")) + ylab("Regression coefficient") + facet_grid(outcome~sex) + theme(legend.position = "none",axis.title.y=element_blank())
+                           labels = c("6-11", "12-17", "18-23", "24-29", "30-35", "36+")) + ylab("Regression coefficient") + facet_grid(outcome~sex) + theme(legend.position = "none",axis.title.y=element_blank())
 
 p2 <- ggplot(data.forestplot[data.forestplot$outcome=="Iron \ndeficiency" | data.forestplot$outcome == "Hb based \ndeferral" | data.forestplot$outcome == "Return",], aes(x=term, y=estimate, shape = significant)) +
          geom_errorbar(aes(ymin=conf.low, ymax=conf.high), 
@@ -435,7 +435,7 @@ p2 <- ggplot(data.forestplot[data.forestplot$outcome=="Iron \ndeficiency" | data
   geom_hline(yintercept = 1, color = "#ff9700", size = 0.35) +
   scale_shape_manual(values = c(1, 16), name = "Statistical \nsignificance          ", labels = c("No", "Yes")) +
   geom_point() + coord_flip() + scale_x_discrete(breaks = c("Intervention_months_factor1", "Intervention_months_factor2", "Intervention_months_factor3", "Intervention_months_factor4", "Intervention_months_factor5", "Intervention_months_factor6"),
-                           labels = c("6-11 months", "12-17 months", "18-23 months", "24-29 months", "30-35 months", "36+ months")) + ylab("Odds ratio")  + facet_grid(outcome~sex) + theme(legend.key.size = unit(0.5, 'cm'), #change legend key size
+                           labels = c("6-11", "12-17", "18-23", "24-29", "30-35", "36+")) + ylab("Odds ratio")  + facet_grid(outcome~sex) + theme(legend.key.size = unit(0.5, 'cm'), #change legend key size
         legend.key.height = unit(0.5, 'cm'), #change legend key height
         legend.key.width = unit(0.5, 'cm'), legend.position = "bottom", axis.title.y = element_blank(), legend.title=element_text(size=7), legend.text=element_text(size=7)) #change legend key width
 
@@ -446,7 +446,7 @@ annotate_figure <- annotate_figure(figure,
                 top = text_grob("Associations of implementation of ferritin-guided donation \nintervals with primary study outcomes", color = "black", size = 14),
                 bottom = text_grob("Ferritin: log10 ng/mL; Hb: g/dL; Iron deficiency: ferritin < 15 ng/mL; Hb deferral: males < 13.5 g/dL, females < 12.5 g/dL; Return: within 6 months of first allowed date. \nReference group: no implementation and 0-5 months since implementation. \nAll analyses are adjusted for age, height and weight. \nReturn is additionally adjusted for whether return would be during COVID pandemic. \nStatistical significance: Bonferroni correction applied to adjust for multiple testing (0.05/6).", color = "black",
                                    hjust = 0, x = 0, size = 5),
-                left = text_grob("Months after intervention", color = "black", rot = 90, vjust=1, x=0.1)
+                left = text_grob("Time after intervention (months)", color = "black", rot = 90, vjust=1, x=0.1)
                 )
 ggsave(annotate_figure, file = "forestplot.jpg")
 ```
