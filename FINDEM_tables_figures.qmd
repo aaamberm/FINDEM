@@ -444,8 +444,8 @@ p2 <- ggplot(data.forestplot[data.forestplot$outcome=="Iron \ndeficiency" | data
 figure <- plot_grid(p1, p2, align = "v", nrow = 2, rel_heights = c(2/5, 3/5))
 annotate_figure <- annotate_figure(figure,
                 top = text_grob("Associations of implementation of ferritin-guided donation \nintervals with primary study outcomes", color = "black", size = 14),
-                bottom = text_grob("Reference group: no implementation and 0-5 months since implementation. \nAll analyses are adjusted for age, height and weight. \nReturn is additionally adjusted for whether return would be during COVID pandemic.", color = "black",
-                                   hjust = 0, x = 0, size = 8),
+                bottom = text_grob("Ferritin: log10 ng/mL; Hb: g/dL; Iron deficiency: ferritin < 15 ng/mL; Hb deferral: males < 13.5 g/dL, females < 12.5 g/dL; Return: within 6 months of first allowed date. \nReference group: no implementation and 0-5 months since implementation. \nAll analyses are adjusted for age, height and weight. \nReturn is additionally adjusted for whether return would be during COVID pandemic. \nStatistical significance: Bonferroni correction applied to adjust for multiple testing (0.05/6).", color = "black",
+                                   hjust = 0, x = 0, size = 5),
                 left = text_grob("Months after intervention", color = "black", rot = 90, vjust=1, x=0.1)
                 )
 ggsave(annotate_figure, file = "forestplot.jpg")
