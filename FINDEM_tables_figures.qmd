@@ -356,6 +356,9 @@ print(plot)
 }
 ```
 ```{r, warning=F, message=F}
+
+order <- c("Premenopausal females", "Postmenopausal females", "Males")
+mdat_total <- mdat_total %>% mutate(Sex = ordered(Sex, levels = order))
 plot <- ggplot(data=mdat_total) + 
   geom_bar(aes(x=Months, y=value, fill = variable), stat="identity", width = 0.4, position = "stack") + scale_fill_manual(values = c("ID" = "#ff9700", "LowFer"= "#1cdbfc"), labels = c("Deficient (<15 ng/mL)", "Low (<30 ng/mL)"), name="Ferritin")+
   xlab("Time since implementation (months)")+ 
