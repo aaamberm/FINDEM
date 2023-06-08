@@ -267,19 +267,19 @@ figure2M <- data.frame(matrix(NA,    # Create empty data frame
                           nrow = 7, # we make a dataset per sex and then have one row per month group of the intervention
                           ncol = 4)) #we need columns for the percentage hb deferral, iron deficiency and low ferritin
 colnames(figure2M) <- c("Months", "Hb", "ID", "LowFer")
-figure2M$Months <- c("0-5", "6-11", "12-17", "18-23", "24-29", "30-35", "36+")
+figure2M$Months <- c("Control", "6-11", "12-17", "18-23", "24-29", "30-35", "36+")
 
 figure2PreF <- data.frame(matrix(NA,    # Create empty data frame
                           nrow = 7, # we make a dataset per sex and then have one row per month group of the intervention
                           ncol = 4)) #we need columns for the percentage hb deferral, iron deficiency and low ferritin
 colnames(figure2PreF) <- c("Months", "Hb", "ID", "LowFer")
-figure2PreF$Months <- c("0-5", "6-11", "12-17", "18-23", "24-29", "30-35", "36+")
+figure2PreF$Months <- c("Control", "6-11", "12-17", "18-23", "24-29", "30-35", "36+")
 
 figure2PostF <- data.frame(matrix(NA,    # Create empty data frame
                           nrow = 7, # we make a dataset per sex and then have one row per month group of the intervention
                           ncol = 4)) #we need columns for the percentage hb deferral, iron deficiency and low ferritin
 colnames(figure2PostF) <- c("Months", "Hb", "ID", "LowFer")
-figure2PostF$Months <- c("0-5", "6-11", "12-17", "18-23", "24-29", "30-35", "36+")
+figure2PostF$Months <- c("Control", "6-11", "12-17", "18-23", "24-29", "30-35", "36+")
 
 for (i in 1:7){
   figure2M[i,2] <- (length(which(data_clean$Gender == "Male" & data_clean$Intervention_months_factor == (i-1) & data_clean$HbDef==1))/length(which(data_clean$Gender == "Male" & data_clean$Intervention_months_factor == (i-1))))*100
@@ -288,7 +288,7 @@ for (i in 1:7){
     
     mdat = melt(figure2M, id.vars=c("Months"),
             measure.vars=c("ID", "LowFer"))
-    mdat$Months <- factor(mdat$Months, levels = c("0-5", "6-11", "12-17", "18-23", "24-29", "30-35", "36+"))
+    mdat$Months <- factor(mdat$Months, levels = c("Control", "6-11", "12-17", "18-23", "24-29", "30-35", "36+"))
     mdat <- merge(mdat, figure2M[,1:2], by = "Months")
     mdat[c(2,4,6, 8, 10,14), 4]<-NA
     mdat$Sex <- "Males"
@@ -299,7 +299,7 @@ for (i in 1:7){
     
     mdatPreF = melt(figure2PreF, id.vars=c("Months"),
             measure.vars=c("ID", "LowFer"))
-    mdatPreF$Months <- factor(mdatPreF$Months, levels = c("0-5", "6-11", "12-17", "18-23", "24-29", "30-35", "36+"))
+    mdatPreF$Months <- factor(mdatPreF$Months, levels = c("Control", "6-11", "12-17", "18-23", "24-29", "30-35", "36+"))
     mdatPreF <- merge(mdatPreF, figure2PreF[,1:2], by = "Months")
     mdatPreF[c(2,4,6, 8, 10,14), 4]<-NA
     mdatPreF$Sex <- "Premenopausal females"
@@ -309,7 +309,7 @@ for (i in 1:7){
     
     mdatPostF = melt(figure2PostF, id.vars=c("Months"),
             measure.vars=c("ID", "LowFer"))
-    mdatPostF$Months <- factor(mdatPostF$Months, levels = c("0-5", "6-11", "12-17", "18-23", "24-29", "30-35", "36+"))
+    mdatPostF$Months <- factor(mdatPostF$Months, levels = c("Control", "6-11", "12-17", "18-23", "24-29", "30-35", "36+"))
     mdatPostF <- merge(mdatPostF, figure2PreF[,1:2], by = "Months")
     mdatPostF[c(2,4,6, 8, 10,14), 4]<-NA
     mdatPostF$Sex <- "Postmenopausal females"
@@ -349,7 +349,7 @@ plot <- ggplot(data=mdat_total[mdat_total$Sex==i,]) +
   ylab("Percentage")+
   geom_bar(aes(x=Months, y=inv_scale_function(Hb, scale, shift)), stat = "identity", position = position_nudge(x = 0.5), width = 0.4, col = "grey", fill = "grey")+
   ggtitle(paste0(i)) + 
-  scale_y_continuous(name = "Donors with low iron (%)", sec.axis = sec_axis(~scale_function(., scale, shift), name="Donors deferred based on Hb (%)"))+ 
+  scale_y_continuous(name = "Donors with low ferritin (%)", sec.axis = sec_axis(~scale_function(., scale, shift), name="Donors deferred based on Hb (%)"))+ 
   theme(axis.title.y = element_text(color = "black", size=10),
         axis.title.y.right = element_text(color = "black", size=10))
 print(plot)
@@ -364,8 +364,8 @@ plot <- ggplot(data=mdat_total) +
   xlab("Time since implementation (months)")+ 
   ylab("Percentage")+
   geom_bar(aes(x=Months, y=inv_scale_function(Hb, scale, shift), color = "grey"), stat = "identity", position = position_nudge(x = 0.5), width = 0.35, fill = "grey") + scale_color_manual(values = c("grey" = "grey"), labels = c("Hb < 12.5/13.5 g/dL (F/M)"), name="Deferral")+
-  ggtitle("Donors presenting with low hemoglobin and iron")+
-  scale_y_continuous(name = "Donors with low iron (%)", sec.axis = sec_axis(~scale_function(., scale, shift), name="Donors deferred based on Hb (%)"))+ 
+  ggtitle("Donors presenting with low ferritin and hemoglobin")+
+  scale_y_continuous(name = "Donors with low ferritin (%)", sec.axis = sec_axis(~scale_function(., scale, shift), name="Donors deferred based on Hb (%)"))+ 
   theme(axis.title.y = element_text(color = "black", size=10),
         axis.title.y.right = element_text(color = "black", size=10))+
   facet_grid(.~ Sex) + 
@@ -429,7 +429,7 @@ p1 <- ggplot(data.forestplot[data.forestplot$outcome=="Ferritin" | data.forestpl
                        position = "dodge", color="#1cdbfc") +
   geom_hline(yintercept = 0, color = "#ff9700", linewidth = 0.35) +
   scale_shape_manual(values = c(1, 16)) + 
-  ylim(-0.1,0.3) +
+  ylim(-0.1,0.5) +
   geom_point() + coord_flip() + scale_x_discrete(breaks = c("Intervention_months_factor1", "Intervention_months_factor2", "Intervention_months_factor3", "Intervention_months_factor4", "Intervention_months_factor5", "Intervention_months_factor6"),
                            labels = c("6-11", "12-17", "18-23", "24-29", "30-35", "36+")) + ylab("Regression coefficient") + facet_grid(outcome~sex) + theme(legend.position = "none",axis.title.y=element_blank())
 
@@ -449,7 +449,7 @@ p2 <- ggplot(data.forestplot[data.forestplot$outcome=="Iron \ndeficiency" | data
 figure <- plot_grid(p1, p2, align = "v", nrow = 2, rel_heights = c(2/5, 3/5))
 annotate_figure <- annotate_figure(figure,
                 top = text_grob("Associations of implementation of ferritin-guided donation \nintervals with primary study outcomes", color = "black", size = 14),
-                bottom = text_grob("Ferritin: log10 ng/mL; Hb: g/dL; Iron deficiency: ferritin < 15 ng/mL; Hb deferral: males < 13.5 g/dL, females < 12.5 g/dL; Return: within 6 months of first allowed date. \nReference group: no implementation and 0-5 months since implementation. \nAll analyses are adjusted for age, height and weight. \nReturn is additionally adjusted for whether return would be during COVID pandemic. \nStatistical significance: Bonferroni correction applied to adjust for multiple testing (0.05/6).", color = "black",
+                bottom = text_grob("Ferritin: log10 ng/mL; Hb: g/dL; Iron deficiency: ferritin < 15 ng/mL; Hb deferral: males < 13.5 g/dL, females < 12.5 g/dL; Return: within 6 months of first allowed date. \nReference group: no implementation and 0-5 months since implementation. \nAll analyses are adjusted for age, height and weight. \nReturn is additionally adjusted for whether return would be during first COVID lockdown (March-May 2020). \nStatistical significance: Bonferroni correction applied to adjust for multiple testing (0.05/6).", color = "black",
                                    hjust = 0, x = 0, size = 5),
                 left = text_grob("Time after intervention (months)", color = "black", rot = 90, vjust=1, x=0.1)
                 )
