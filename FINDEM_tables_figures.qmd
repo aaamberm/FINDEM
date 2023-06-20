@@ -31,7 +31,7 @@ library(cli)
 library(forestmangr)
 library(cowplot)
 library(ggpubr)
-library(robustbase)      #robust regression
+library(robustbase)      # robust regression
 
 setwd("~/Amber/FINDEM") 
 ```
@@ -421,14 +421,14 @@ load_models <- function(model){
 order <- rev(c("Intervention_months_factor1", "Intervention_months_factor2", "Intervention_months_factor3", "Intervention_months_factor4", "Intervention_months_factor5", "Intervention_months_factor6"))
 
 datalist <- lapply(models, load_models)
-data.forestplot <- bind_rows(datalist) %>% mutate(term = ordered(term, levels = order)) %>% mutate(sex = dplyr::recode(sex, "M" = "Male", "postF" = "Postmenopausal females", "preF" = "Premenopausal females"), outcome = dplyr::recode(outcome, "ferritin" = "Ferritin", "hb" = "Hemoglobin", "hbdef" = "Hb based \ndeferral", "ID" = "Iron \ndeficiency", "returnOT" = "Return"),  significant = as.factor(ifelse(p.value >= (0.05/6), 1, 0)), significant = ordered(significant, levels = c("1", "0")))
+data.forestplot <- bind_rows(datalist) %>% mutate(term = ordered(term, levels = order)) %>% mutate(sex = dplyr::recode(sex, "M" = "Males", "postF" = "Postmenopausal females", "preF" = "Premenopausal females"), sex = ordered(sex, levels = c("Premenopausal females", "Postmenopausal females", "Males")), outcome = dplyr::recode(outcome, "ferritin" = "Ferritin", "hb" = "Hemoglobin", "hbdef" = "Hb based \ndeferral", "ID" = "Iron \ndeficiency", "returnOT" = "Return"),  significant = as.factor(ifelse(p.value <= (0.05/6), 1, 0)), significant = ordered(significant, levels = c("1", "0")))
 
 p1 <- ggplot(data.forestplot[data.forestplot$outcome=="Ferritin" | data.forestplot$outcome == "Hemoglobin",], aes(x=term, y=estimate, shape = significant)) +
          geom_errorbar(aes(ymin=conf.low, ymax=conf.high), 
                        width = 0.2,size  = 0.5,
                        position = "dodge", color="#1cdbfc") +
   geom_hline(yintercept = 0, color = "#ff9700", linewidth = 0.35) +
-  scale_shape_manual(values = c(1, 16)) + 
+  scale_shape_manual(values = c(16, 1)) + 
   ylim(-0.1,0.5) +
   geom_point() + coord_flip() + scale_x_discrete(breaks = c("Intervention_months_factor1", "Intervention_months_factor2", "Intervention_months_factor3", "Intervention_months_factor4", "Intervention_months_factor5", "Intervention_months_factor6"),
                            labels = c("6-11", "12-17", "18-23", "24-29", "30-35", "36+")) + ylab("Regression coefficient") + facet_grid(outcome~sex) + theme(legend.position = "none",axis.title.y=element_blank())
@@ -438,7 +438,7 @@ p2 <- ggplot(data.forestplot[data.forestplot$outcome=="Iron \ndeficiency" | data
                        width = 0.2,size  = 0.5,
                        position = "dodge", color="#1cdbfc") +
   geom_hline(yintercept = 1, color = "#ff9700", linewidth = 0.35) +
-  scale_shape_manual(values = c(1, 16), name = "Statistical \nsignificance          ", labels = c("No", "Yes")) +
+  scale_shape_manual(values = c(16, 1), name = "Statistical \nsignificance \n(p<0.008)        ", labels = c("Yes", "No")) +
   geom_point() + coord_flip() + scale_x_discrete(breaks = c("Intervention_months_factor1", "Intervention_months_factor2", "Intervention_months_factor3", "Intervention_months_factor4", "Intervention_months_factor5", "Intervention_months_factor6"),
                            labels = c("6-11", "12-17", "18-23", "24-29", "30-35", "36+")) + ylab("Odds ratio")  + facet_grid(outcome~sex) + theme(legend.key.size = unit(0.5, 'cm'), #change legend key size
         legend.key.height = unit(0.5, 'cm'), #change legend key height
@@ -520,7 +520,7 @@ load_models_Q <- function(model){
 order <- rev(c("Intervention_months_factor1", "Intervention_months_factor2", "Intervention_months_factor3", "Intervention_months_factor4"))
 
 datalist <- lapply(modelsQ, load_models_Q)
-data.forestplot <- bind_rows(datalist) %>% mutate(term = ordered(term, levels = order)) %>% mutate(sex = dplyr::recode(sex, "M" = "Male", "postF" = "Postmenopausal females", "preF" = "Premenopausal females"), outcome = dplyr::recode(outcome, "WG" = "Warm\nglow", "PICA" = "Pica", "RLS" = "Restless \nlegs syn-\ndrome", "CFQ" = "Cognitive \nfuncti- \noning", "CIS" = "Fatigue", "SFph" = "Physical \nhealth", "SFmh"="Mental\nhealth"),  significant = as.factor(ifelse(p.value >= (0.05/4), 1, 0)), significant = ordered(significant, levels = c("1", "0")))
+data.forestplot <- bind_rows(datalist) %>% mutate(term = ordered(term, levels = order)) %>% mutate(sex = dplyr::recode(sex, "M" = "Male", "postF" = "Postmenopausal females", "preF" = "Premenopausal females"), outcome = dplyr::recode(outcome, "WG" = "Warm\nglow", "PICA" = "Pica", "RLS" = "Restless \nlegs syn-\ndrome", "CFQ" = "Cognitive \nfuncti- \noning", "CIS" = "Fatigue", "SFph" = "Physical \nhealth", "SFmh"="Mental\nhealth"),  significant = as.factor(ifelse(p.value <= (0.05/4), 1, 0)), significant = ordered(significant, levels = c("1", "0")))
 
 p1Q <- ggplot(data.forestplot[data.forestplot$outcome=="Cognitive \nfuncti- \noning" | data.forestplot$outcome == "Fatigue" | data.forestplot$outcome == "Physical \nhealth" | data.forestplot$outcome=="Mental\nhealth",], aes(x=term, y=estimate, shape = significant)) +
          geom_errorbar(aes(ymin=conf.low, ymax=conf.high), 
@@ -536,7 +536,7 @@ p2Q <- ggplot(data.forestplot[data.forestplot$outcome=="Warm\nglow" | data.fores
                        width = 0.2,size  = 0.5,
                        position = "dodge", color="#1cdbfc") +
   geom_hline(yintercept = 1, color = "#ff9700", linewidth = 0.35) +
-  scale_shape_manual(values = c(1, 16), name = "Statistical \nsignificance          ", labels = c("No", "Yes")) +
+  scale_shape_manual(values = c(16, 1), name = "Statistical \nsignificance \n(p<0.013)        ", labels = c("Yes", "No")) +
   geom_point() + coord_flip() + scale_x_discrete(breaks = c("Intervention_months_factor1", "Intervention_months_factor2", "Intervention_months_factor3", "Intervention_months_factor4"),
                            labels = c("6-11", "12-17", "18-23", "24-29")) + ylab("Odds ratio")  + facet_grid(outcome~sex) + theme(legend.key.size = unit(0.5, 'cm'), #change legend key size
         legend.key.height = unit(0.5, 'cm'), #change legend key height

@@ -28,7 +28,7 @@ library(broom)           # for function augment
 library(lmtest)          # assumption tests
 library(sandwich)        # heteroskedasticity
 library(olsrr)           # outlier analysis
-library(robustbase)      #robust regression
+library(robustbase)      # robust regression
 
 setwd("~/Amber/FINDEM") 
 ```

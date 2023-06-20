@@ -1,0 +1,49 @@
+---
+title: "Impact of the FIND'EM study on the blood supply"
+format:
+  html:
+    code-fold: true
+#    page-layout: full
+    toc: true
+    embed-resources: true
+---
+
+```{r}
+#| label: initialize
+#| include: false
+library(haven)
+library(dplyr)
+
+setwd("~/Amber/FINDEM") 
+
+pss2date <- function(x) as.Date(x/86400, origin = "1582-10-14") 
+
+```
+
+# Load data
+```{r}
+#| label: load data
+y2015 <- read_sav("~/Amber/Data/FINDEM/DonorsTotaal/2015DonorsTotaal.sav") %>% mutate(Prev_Oproepbaar_Ind = case_when(Oproepbaar == "O"~1, Oproepbaar == "N" ~0), DonorstopCode = Donorstopcode)
+y2016 <- read_sav("~/Amber/Data/FINDEM/DonorsTotaal/2016DonorsTotaal.sav") %>% mutate(Prev_Oproepbaar_Ind = case_when(Oproepbaar == "O"~1, Oproepbaar == "N" ~0), DonorstopCode = Donorstopcode)
+y2017 <- read.csv("~/Amber/Data/FINDEM/DonorsTotaal/2017DonorsTotaal.csv", sep=";") %>% mutate(Invoerdatum = as.Date(Inschrijfdatum, format = "%m/%d/%Y"))
+y2018 <- read.csv("~/Amber/Data/FINDEM/DonorsTotaal/2018DonorsTotaal.csv", sep=";")%>% mutate(Invoerdatum = as.Date(Inschrijfdatum, format = "%m/%d/%Y"))
+y2019 <- read_sav("~/Amber/Data/FINDEM/DonorsTotaal/2019DonorsTotaal.sav")%>% mutate(Invoerdatum = as.Date(Inschrijfdatum, format = "%m/%d/%Y"))
+y2020 <- read_sav("~/Amber/Data/FINDEM/DonorsTotaal/2020DonorsTotaal.sav")%>% mutate(Invoerdatum = as.Date(Inschrijfdatum, format = "%m/%d/%Y"))
+y2021 <- read_sav("~/Amber/Data/FINDEM/DonorsTotaal/2021DonorsTotaal.sav")%>% mutate(Invoerdatum = as.Date(Inschrijfdatum, format = "%m/%d/%Y"))
+```
+
+# Summary per year of impact on blood supply
+```{r}
+#| label: lapse
+
+years <- paste(c(2015:2022))
+overview <- matrix(nrow = 6, ncol = 3)
+colnames(overview) <- c("New donors", "Lapsed donors", "Available donors")
+rownames(overview) <- years[2:7]
+
+for(i in 2:(length(years)-1)){
+  eval(parse(text=paste0("overview[i-1,1]<-sum(y",years[i],"$Invoerdatum > \"",years[i-1],"-12-31\", na.rm=T)")))
+  eval(parse(text=paste0("overview[i-1,2]<-(nrow(y",years[i],")-sum(is.na(y",years[i],"$DonorstopCode)|y", years[i], "$DonorstopCode<0))-(nrow(y",years[i-1],")-sum(is.na(y",years[i-1],"$DonorstopCode)|y", years[i-1], "$DonorstopCode<0))")))
+  eval(parse(text=paste0("overview[i-1,3]<-sum(y",years[i],"$Prev_Oproepbaar_Ind==1, na.rm=T)")))
+}
+```
