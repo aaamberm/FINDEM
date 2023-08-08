@@ -2,7 +2,12 @@
 .Rhistory
 .RData
 .Ruserdata
+.rds
+.xlsx
+
 local
 "01 Data"
 "data"
 /results
+
+
