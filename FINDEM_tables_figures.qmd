@@ -545,11 +545,25 @@ p2Q <- ggplot(data.forestplot[data.forestplot$outcome=="Warm\nglow" | data.fores
 
 
 figure <- plot_grid(p1Q, p2Q, align = "v", nrow = 2, rel_heights = c(4/7, 3/7))
-annotate_figure <- annotate_figure(figure,
+annotate_figureQ <- annotate_figure(figure,
                 top = text_grob("Associations of implementation of ferritin-guided donation \nintervals with secondary study outcomes", color = "black", size = 14),
-                bottom = text_grob("Statistical significance: Bonferroni correction applied to adjust for multiple testing (0.05/6). \nCognitive functioning: higher score indicates worse result. \nPhysical & mental health: higher score indicates better result.", color = "black",
+                bottom = text_grob("Statistical significance: Bonferroni correction applied to adjust for multiple testing (0.05/4). \nCognitive functioning: higher score indicates worse result. \nPhysical & mental health: higher score indicates better result.", color = "black",
                                    hjust = 0, x = 0, size = 5),
                 left = text_grob("Time after intervention (months)", color = "black", rot = 90, vjust=1, x=0.1)
                 )
-ggsave(annotate_figure, file = "forestplot_Q.jpg", width = 7, height = 8.5)
+ggsave(annotate_figureQ, file = "forestplot_Q.jpg", width = 7, height = 8.5)
+```
+
+# Combined forest plot
+
+```{r}
+figure <- plot_grid(p1Q, p2Q, align = "v", nrow = 2, rel_heights = c(4/7, 3/7))
+annotate_figureQ <- annotate_figure(figure,
+                top = text_grob("Associations of implementation of ferritin-guided donation \nintervals with secondary study outcomes", color = "black", size = 14),
+                bottom = text_grob("Statistical significance: Bonferroni correction applied to adjust for multiple testing (0.05/6). \nCognitive functioning: higher score indicates worse result. \nPhysical & mental health: higher score indicates better result. \n \n", color = "black",
+                                   hjust = 0, x = 0, size = 5)
+                )
+
+final_figure <- plot_grid(annotate_figure, annotate_figureQ, align = "h", ncol = 2, rel_widths =c(1/2, 1/2), labels = "AUTO")
+ggsave(final_figure, file = "forestplot_final.jpg", width = 14, height = 8.5)
 ```
