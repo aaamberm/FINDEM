@@ -31,6 +31,7 @@ y2018 <- read.csv("~/Amber/Data/FINDEM/DonorsTotaal/2018DonorsTotaal.csv", sep="
 y2019 <- read_sav("~/Amber/Data/FINDEM/DonorsTotaal/2019DonorsTotaal.sav")%>% mutate(Invoerdatum = as.Date(Inschrijfdatum, format = "%m/%d/%Y"),Donatie_Soort = case_when(Donatie_Soort == "Volbloed" ~"V", Donatie_Soort == "Nieuwe donorkeuring" ~"N"))%>% filter(Donatie_Soort == "V" | Donatie_Soort == "N")
 y2020 <- read_sav("~/Amber/Data/FINDEM/DonorsTotaal/2020DonorsTotaal.sav")%>% mutate(Invoerdatum = as.Date(Inschrijfdatum, format = "%m/%d/%Y"),Donatie_Soort = case_when(Donatie_Soort == "Volbloed" ~"V", Donatie_Soort == "Nieuwe donorkeuring" ~"N"))%>% filter(Donatie_Soort == "V" | Donatie_Soort == "N")
 y2021 <- read_sav("~/Amber/Data/FINDEM/DonorsTotaal/2021DonorsTotaal.sav")%>% mutate(Invoerdatum = as.Date(Inschrijfdatum, format = "%m/%d/%Y"),Donatie_Soort = case_when(Donatie_Soort == "Volbloed" ~"V", Donatie_Soort == "Nieuwe donorkeuring" ~"N"))%>% filter(Donatie_Soort == "V" | Donatie_Soort == "N")
+y2022 <- read_sav("~/Amber/Data/FINDEM/DonorsTotaal/2022DonorsTotaal.sav")%>% mutate(Invoerdatum = as.Date(Inschrijfdatum, format = "%m/%d/%Y"),Donatie_Soort = case_when(Donatie_Soort == "Volbloed" ~"V", Donatie_Soort == "Nieuwe donorkeuring" ~"N"))%>% filter(Donatie_Soort == "V" | Donatie_Soort == "N")
 ```
 
 ```{r}
@@ -42,17 +43,20 @@ c2018 <-read_sav("~/Amber/Data/FINDEM/Oproepen/2018Oproepen.sav")%>% filter(Dona
 c2019 <-read_sav("~/Amber/Data/FINDEM/Oproepen/2019Oproepen.sav")%>% filter(Donatiesoortcode == "N" | Donatiesoortcode == "V")
 c2020 <-read_sav("~/Amber/Data/FINDEM/Oproepen/2020Oproepen.sav")%>% filter(Donatiesoortcode == "N" | Donatiesoortcode == "V")
 c2021 <- read_sav("~/Amber/Data/FINDEM/Oproepen/2021Oproepen.sav")%>% filter(Donatiesoortcode == "N" | Donatiesoortcode == "V")
+c2022 <- read_sav("~/Amber/Data/FINDEM/Oproepen/2022Oproepen.sav")%>% filter(Donatiesoortcode == "N" | Donatiesoortcode == "V")
 ```
 
 ```{r}
 #| label: load deferral data
 d2015 <-read_sav("~/Amber/Data/FINDEM/Afkeur/2015DonorAfkeur.sav") %>% mutate(FerAfkeur = 0, HbAfkeur = ifelse(Donorafkeurcode == 2304 | Donorafkeurcode == 2307 | Donorafkeurcode == 7305, 1, 0))
 d2016 <-read_sav("~/Amber/Data/FINDEM/Afkeur/2016DonorAfkeur.sav") %>% mutate(FerAfkeur = 0, HbAfkeur = ifelse(Donorafkeurcode == 2304 | Donorafkeurcode == 2307 | Donorafkeurcode == 7305, 1, 0))
-d2017 <-read_sav("~/Amber/Data/FINDEM/Afkeur/2017DonorAfkeur.sav")
-d2018 <-read_sav("~/Amber/Data/FINDEM/Afkeur/2018DonorAfkeur.sav")
-d2019 <-read_sav("~/Amber/Data/FINDEM/Afkeur/2019DonorAfkeur.sav")
-d2020 <-read_sav("~/Amber/Data/FINDEM/Afkeur/2020DonorAfkeur.sav")
-d2021 <- read_sav("~/Amber/Data/FINDEM/Afkeur/2021DonorAfkeur.sav") %>% mutate(FerAfkeur = ifelse(Donorafkeurcode == 6010 | Donorafkeurcode == 6011 | Donorafkeurcode == 6012, 1, 0),  HbAfkeur = ifelse(Donorafkeurcode == 2304 | Donorafkeurcode == 2307 | Donorafkeurcode == 7305, 1, 0))
+d2017 <-read_sav("~/Amber/Data/FINDEM/Afkeur/2017DonorAfkeur.sav") %>% mutate(unav = ifelse((Donorafkeurcode == 6010 | Donorafkeurcode == 6011 | Donorafkeurcode == 6012) & TotDatum >= "2017-12-31",1,0))
+d2018 <-read_sav("~/Amber/Data/FINDEM/Afkeur/2018DonorAfkeur.sav")%>% mutate(unav = ifelse((Donorafkeurcode == 6010 | Donorafkeurcode == 6011 | Donorafkeurcode == 6012) & TotDatum >= "2018-12-31",1,0))
+d2019 <-read_sav("~/Amber/Data/FINDEM/Afkeur/2019DonorAfkeur.sav")%>% mutate(unav = ifelse((Donorafkeurcode == 6010 | Donorafkeurcode == 6011 | Donorafkeurcode == 6012) &  TotDatum >= "2019-12-31",1,0))
+d2020 <-read_sav("~/Amber/Data/FINDEM/Afkeur/2020DonorAfkeur.sav")%>% mutate(unav = ifelse((Donorafkeurcode == 6010 | Donorafkeurcode == 6011 | Donorafkeurcode == 6012) & TotDatum >= "2020-12-31",1,0))
+d2021 <- read_sav("~/Amber/Data/FINDEM/Afkeur/2021DonorAfkeur.sav") %>% mutate(FerAfkeur = ifelse(Donorafkeurcode == 6010 | Donorafkeurcode == 6011 | Donorafkeurcode == 6012, 1, 0),  HbAfkeur = ifelse(Donorafkeurcode == 2304 | Donorafkeurcode == 2307 | Donorafkeurcode == 7305, 1, 0), JaarVanaf = as.numeric(format(as.Date(VanafDatum, format="%Y-%m-%d"),"%Y")))%>% mutate(unav = ifelse((Donorafkeurcode == 6010 | Donorafkeurcode == 6011 | Donorafkeurcode == 6012) & TotDatum >= "2021-12-31",1,0))
+d2022 <- read_sav("~/Amber/Data/FINDEM/Afkeur/2022DonorAfkeur.sav") %>% mutate(VanafDatum = as.Date(VanafDatum,format="%Y-%m-%d"),TotDatum=as.Date(TotDatum, format="%Y-%m-%d"),FerAfkeur = ifelse(Donorafkeurcode == 6010 | Donorafkeurcode == 6011 | Donorafkeurcode == 6012, 1, 0),  HbAfkeur = ifelse(Donorafkeurcode == 2304 | Donorafkeurcode == 2307 | Donorafkeurcode == 7305, 1, 0), JaarVanaf = as.numeric(format(as.Date(VanafDatum, format="%Y-%m-%d"),"%Y")))%>% mutate(unav = ifelse((Donorafkeurcode == 6010 | Donorafkeurcode == 6011 | Donorafkeurcode == 6012) & TotDatum >= "2022-12-31",1,0))
+
 ```
 
 ```{r}
@@ -64,44 +68,64 @@ alledonaties <- readRDS("~/Amber/Data/Algemeen/alledonaties_2008_2022.rds") %>% 
 ```{r}
 #| label: summary
 
-years <- paste(c(2015:2022))
-donationnr <- c(1:6)
-wbddonationnr <- c(1:6)
-donornr <- c(1:6)
+years <- paste(c(2015:2023))
+donationnr <- c(1:7)
+wbddonationnr <- c(1:7)
+donornr <- c(1:7)
 
 for(i in 2:length(years)-1){
   eval(parse(text=paste0("donationnr[i-1]<-sum(alledonaties$Donatiedatum>=\"",years[i],"-01-01\" & alledonaties$Donatiedatum <= \"",years[i],"-12-31\")")))
-    eval(parse(text=paste0("wbddonationnr[i-1]<-sum(alledonaties$Donatiedatum>=\"",years[i],"-01-01\" & alledonaties$Donatiedatum <= \"",years[i],"-12-31\" & alledonaties$Donatiesoortcode == \"Volbloed\")")))
+    eval(parse(text=paste0("wbddonationnr[i-1]<-sum(alledonaties$Donatiedatum>=\"",years[i],"-01-01\" & alledonaties$Donatiedatum <= \"",years[i],"-12-31\" & alledonaties$Donatiesoortcode == \"Volbloed\" & alledonaties$AfgenomenVolume>350 , na.rm=T)")))
   eval(parse(text=paste0("donornr[i-1]<-length(unique(alledonaties$KeyID[alledonaties$Donatiedatum>=\"",years[i],"-01-01\" & alledonaties$Donatiedatum <= \"",years[i],"-12-31\"]))")))
 }
 
-overview <- matrix(nrow = 6, ncol = 13)
-names <- c("Donation aim","Donations", "Unique donors","New donors", "Lapsed donors", "Available donors", "Percentage of available donors called to donate","Donation frequency", "Calls per donation", "Prolonged donation intervals due to ferritin","Percentage prolonged intervals", "Hb deferral", "Hb deferral percentage")
+
+overview <- matrix(nrow = 7, ncol = 16)
+names <- c("Demand (in donation units)","Donations", "Unique donors","New donors", "Lapsed donors", "Available donors on 31st of December", "Number of donors unavailable on 31st of December due to ferritin", "Percentage of available donors called to donate","Donation frequency", "Calls per donation", "Prolonged donation intervals due to ferritin","Percentage prolonged intervals","Unique donors with prolonged intervals", "Hb deferral", "Hb deferral percentage", "Unique donors deferred for Hb")
 colnames(overview) <- names
-rownames(overview) <- years[2:7]
+rownames(overview) <- years[2:8]
 
 for(i in 2:(length(years)-1)){
-  overview[,1]<-c(425600,425601,417331,412442,413455,413922)
+  #Donation demand
+  overview[,1]<-c(418491,407215,406199,407460,402578,400757,392805)
+  #Number of whole blood donations
   overview[,2]<- wbddonationnr
+  #Number of donors
   overview[,3]<-donornr
+  #Number of new donor examinations
   eval(parse(text=paste0("overview[i-1,4]<-sum(y",years[i],"$Invoerdatum > \"",years[i-1],"-12-31\", na.rm=T)")))
+  #Number of lapsed donors
   eval(parse(text=paste0("overview[i-1,5]<-(nrow(y",years[i],")-sum(is.na(y",years[i],"$DonorstopCode)|y", years[i], "$DonorstopCode<0))-(nrow(y",years[i-1],")-sum(is.na(y",years[i-1],"$DonorstopCode)|y", years[i-1], "$DonorstopCode<0))")))
+  #Available donors
   eval(parse(text=paste0("overview[i-1,6]<-sum(y",years[i],"$Donor_Oproepbaar_Ind==1, na.rm=T)")))
-  eval(parse(text=paste0("overview[i-1,7]<-(overview[i-1,3]/overview[i-1,6])*100")))
-  eval(parse(text=paste0("overview[i-1,8]<-wbddonationnr[i-1]/donornr[i-1]")))
-  eval(parse(text=paste0("overview[i-1,9]<-nrow(y",years[i],")/donationnr[i-1]")))
-    eval(parse(text=paste0("overview[i-1,12]<-sum(d",years[i],"$HbAfkeur, na.rm=T)-sum(d",years[i-1],"$HbAfkeur, na.rm=T)")))
-  eval(parse(text=paste0("overview[i-1,13]<-(overview[i-1,12]/wbddonationnr[i-1])*100")))
+  #Unavailable donors due to low ferritin
+  eval(parse(text=paste0("overview[i-1,7]<-length(unique(d",years[i],"$KeyID[d",years[i],"$unav==1]))")))
+  #Available donors invited to donate  (%)
+  eval(parse(text=paste0("overview[i-1,8]<-(overview[i-1,3]/overview[i-1,6])*100")))
+  #Donation frequency
+  eval(parse(text=paste0("overview[i-1,9]<-wbddonationnr[i-1]/donornr[i-1]")))
+  #Calls per donation
+  eval(parse(text=paste0("overview[i-1,10]<-nrow(y",years[i],")/donationnr[i-1]")))
+  #Hb deferral
+  eval(parse(text=paste0("overview[i-1,14]<-sum(d",years[i],"$HbAfkeur==1 & d",years[i],"$JaarVanaf == ",years[i],", na.rm=T)")))
+  #Hb deferral percentage
+  eval(parse(text=paste0("overview[i-1,15]<-(overview[i-1,14]/wbddonationnr[i-1])*100")))
+  #Unique donors deferred for Hb
+  eval(parse(text=paste0("overview[i-1,16] <-length(unique(d",years[i],"$KeyID[d",years[i],"$HbAfkeur==1 & d",years[i],"$JaarVanaf==",years[i],"]))")))
 }
 
 for(i in 3:(length(years)-1)){
-  eval(parse(text=paste0("overview[i-1,10]<-sum(d",years[i],"$FerAfkeur)-sum(d",years[i-1],"$FerAfkeur)")))
-  eval(parse(text=paste0("overview[i-1,11]<-(overview[i-1,10]/wbddonationnr[i-1])*100")))
+  #Prolonged donation intervals due to ferritin
+  eval(parse(text=paste0("overview[i-1,11]<-sum(d",years[i],"$FerAfkeur==1 & d",years[i],"$JaarVanaf == ",years[i],")")))
+  #Percentage prolonged intervals
+  eval(parse(text=paste0("overview[i-1,12]<-(overview[i-1,11]/wbddonationnr[i-1])*100")))
+  #Unique donors with prolonged intervals
+  eval(parse(text=paste0("overview[i-1,13] <- length(unique(d",years[i],"$KeyID[d",years[i],"$FerAfkeur==1 & d",years[i],"$JaarVanaf==",years[i],"]))")))
 }
 
 overview2 <- as.data.frame(t(overview))
 overview2 <- cbind(names, overview2)
-saveRDS(overview2, file = "impactbloodsupply.rds")
-write_xlsx(overview2, "impactbloodsupply.xlsx")
+saveRDS(overview2, file = "~/Amber/FINDEM/results/impactbloodsupply.rds")
+write_xlsx(overview2, "~/Amber/FINDEM/results/impactbloodsupply.xlsx")
 ```
 
