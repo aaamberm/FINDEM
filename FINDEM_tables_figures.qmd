@@ -310,7 +310,7 @@ for (i in 1:7){
     mdatPostF = melt(figure2PostF, id.vars=c("Months"),
             measure.vars=c("ID", "LowFer"))
     mdatPostF$Months <- factor(mdatPostF$Months, levels = c("Control", "6-11", "12-17", "18-23", "24-29", "30-35", "36+"))
-    mdatPostF <- merge(mdatPostF, figure2PreF[,1:2], by = "Months")
+    mdatPostF <- merge(mdatPostF, figure2PostF[,1:2], by = "Months")
     mdatPostF[c(2,4,6, 8, 10,14), 4]<-NA
     mdatPostF$Sex <- "Postmenopausal females"
 
