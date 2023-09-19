@@ -8,9 +8,9 @@ format:
     embed-resources: true
 ---
 
-```{r}
+```{r, collapse=TRUE}
 #| label: initialize
-#| include: false
+
 library(haven)
 library(dplyr)
 library(writexl)

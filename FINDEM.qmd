@@ -8,9 +8,8 @@ format:
     embed-resources: true
 ---
 
-```{r}
+```{r, collapse=T}
 #| label: load-packages
-#| include: false
 
 library(tidyverse)       
 library(haven)           # importing SPSS data files
