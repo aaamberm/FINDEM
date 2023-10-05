@@ -41,17 +41,9 @@ legs syndrome (RLS), fatigue, pica, cognitive functioning, and warm
 glow, and were assessed during the 2nd and 3rd measurement week using
 questionnaires.
 
-**Results**  We measured 36,099 donors, median age 43 years and 52% female, making 37,621 donations during the study period. Analyses suggest ferritin-guided donation intervals increased log-transformed ferritin levels at all time points in the trial, up to 0.24 log10 ng/mL as compared to baseline (95% CI 0.22 – 0.27, p <0.001). Hb increased as well, up to 0.37 g/dL (95% CI 0.31 – 0.43, p <0.001). Decreased odds of 85% (95% CI OR 0.10 – 0.21, p <0.001) for iron deficiency and 77% (95% CI OR 0.11 – 0.41, p <0.001) for Hb deferral were reported compared to baseline. Odds of donor return decreased over the course of the trial, as low as 40% (95% CI OR 0.51 – 0.71, p <0.001). We found no evidence for improved self-reported iron deficiency-related symptoms after implementation of the new policy.
+**Results**  We measured 36,099 donors, median age 43 years and 52% female, making 37,621 donations during the study period. Ferritin-guided donation intervals were associated with increased log-transformed ferritin levels at all time points in the trial, up to 0.24 log10 ng/mL as compared to baseline (95% CI 0.22 – 0.27, p <0.001). Hb increased as well, up to 0.37 g/dL (95% CI 0.31 – 0.43, p <0.001). After implementation of the policy, donors were less likely to be iron deficient (OR 0.15, 95% CI 0.10 – 0.21, p <0.001) or deferred based on their Hb (OR 0.23, 95% CI 0.11 – 0.41, p <0.001) compared to baseline. However, donors were also less likely to return to donate (OR 0.60, 95% CI 0.51 – 0.67, p <0.001). In addition, more invitations had to be sent to donors to obtain one donation and the average donation frequency decreased. We found no evidence for improved self-reported iron deficiency-related symptoms. 
 
-**Conclusions** Ferritin-guided donation intervals are associated with
-significantly higher overall Hb and ferritin levels, as well as lower
-prevalence of iron deficiency and Hb deferrals in whole blood donors. No
-improvements in iron deficiency-related symptoms were found, warranting
-further research into health effects of iron deficiency in donors.
-However, reporting of RLS increased, which may be due to increased
-awareness. Our observations suggest ferritin-guided donation intervals
-are beneficial for Hb levels and iron stores, but additional efforts are
-required to retain donors.
+**Conclusions** Ferritin-guided donation intervals were significantly associated with increasing overall Hb and ferritin levels, thereby decreasing the prevalence of iron deficiency and Hb deferrals in whole blood donors. Ferritin-guided donation intervals seem beneficial for Hb levels and iron maintenance, but additional efforts are required to retain donors and to remedy self-reported iron deficiency-related symptoms.
 
 ## How to read?
 
