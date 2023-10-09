@@ -264,54 +264,71 @@ data_clean$LowFerr[data_clean$Ferritin>=15 & data_clean$Ferritin < 30] <- 1
 
 figure2M <- data.frame(matrix(NA,    # Create empty data frame
                           nrow = 7, # we make a dataset per sex and then have one row per month group of the intervention
-                          ncol = 4)) #we need columns for the percentage hb deferral, iron deficiency and low ferritin
-colnames(figure2M) <- c("Months", "Hb", "ID", "LowFer")
+                          ncol = 7)) #we need columns for the percentage hb deferral, iron deficiency and low ferritin
+colnames(figure2M) <- c("Months", "Hb", "Hb_se", "ID","ID_se", "LowFer","LowFer_se")
 figure2M$Months <- c("Control", "6-11", "12-17", "18-23", "24-29", "30-35", "36+")
 
 figure2PreF <- data.frame(matrix(NA,    # Create empty data frame
                           nrow = 7, # we make a dataset per sex and then have one row per month group of the intervention
-                          ncol = 4)) #we need columns for the percentage hb deferral, iron deficiency and low ferritin
-colnames(figure2PreF) <- c("Months", "Hb", "ID", "LowFer")
+                          ncol = 7)) #we need columns for the percentage hb deferral, iron deficiency and low ferritin
+colnames(figure2PreF) <- c("Months", "Hb", "Hb_se", "ID","ID_se", "LowFer","LowFer_se")
 figure2PreF$Months <- c("Control", "6-11", "12-17", "18-23", "24-29", "30-35", "36+")
 
 figure2PostF <- data.frame(matrix(NA,    # Create empty data frame
                           nrow = 7, # we make a dataset per sex and then have one row per month group of the intervention
-                          ncol = 4)) #we need columns for the percentage hb deferral, iron deficiency and low ferritin
-colnames(figure2PostF) <- c("Months", "Hb", "ID", "LowFer")
+                          ncol = 7)) #we need columns for the percentage hb deferral, iron deficiency and low ferritin
+colnames(figure2PostF) <- c("Months", "Hb", "Hb_se", "ID","ID_se", "LowFer","LowFer_se")
 figure2PostF$Months <- c("Control", "6-11", "12-17", "18-23", "24-29", "30-35", "36+")
 
 for (i in 1:7){
   figure2M[i,2] <- (length(which(data_clean$Gender == "Male" & data_clean$Intervention_months_factor == (i-1) & data_clean$HbDef==1))/length(which(data_clean$Gender == "Male" & data_clean$Intervention_months_factor == (i-1))))*100
-  figure2M[i,3] <- (length(which(data_clean$Gender == "Male" & data_clean$Intervention_months_factor == (i-1) & data_clean$IronDef==1))/length(which(data_clean$Gender == "Male" & data_clean$Intervention_months_factor == (i-1))))*100
-    figure2M[i,4] <- (length(which(data_clean$Gender == "Male" & data_clean$Intervention_months_factor == (i-1) & data_clean$LowFerr ==1))/length(which(data_clean$Gender == "Male" & data_clean$Intervention_months_factor == (i-1))))*100
+  figure2M[i,3] <- sqrt(((figure2M[i,2]/100)*(1 - (figure2M[i,2]/100)))/length(which(data_clean$Gender == "Male" & data_clean$Intervention_months_factor == (i-1))))
+  figure2M[i,4] <- (length(which(data_clean$Gender == "Male" & data_clean$Intervention_months_factor == (i-1) & data_clean$IronDef==1))/length(which(data_clean$Gender == "Male" & data_clean$Intervention_months_factor == (i-1))))*100
+    figure2M[i,5] <- sqrt(((figure2M[i,4]/100)*(1 - (figure2M[i,4]/100)))/length(which(data_clean$Gender == "Male" & data_clean$Intervention_months_factor == (i-1))))
+    figure2M[i,6] <- (length(which(data_clean$Gender == "Male" & data_clean$Intervention_months_factor == (i-1) & data_clean$LowFerr ==1))/length(which(data_clean$Gender == "Male" & data_clean$Intervention_months_factor == (i-1))))*100
+      figure2M[i,7] <- sqrt(((figure2M[i,6]/100)*(1 - (figure2M[i,6]/100)))/length(which(data_clean$Gender == "Male" & data_clean$Intervention_months_factor == (i-1))))
     
     mdat = melt(figure2M, id.vars=c("Months"),
             measure.vars=c("ID", "LowFer"))
     mdat$Months <- factor(mdat$Months, levels = c("Control", "6-11", "12-17", "18-23", "24-29", "30-35", "36+"))
-    mdat <- merge(mdat, figure2M[,1:2], by = "Months")
-    mdat[c(2,4,6, 8, 10,14), 4]<-NA
+    mdat$se[1:7] <- figure2M[,5] 
+    mdat$se[8:14] <- figure2M[,7]
     mdat$Sex <- "Males"
+    mdat <- merge(mdat, figure2M[,1:3], by = "Months")
+    mdat[c(2,4,6,8,10,12,14),6:7]<-NA
+    
     
       figure2PreF[i,2] <- (length(which(data_clean$Gender == "Female" & data_clean$PostMeno == 0 & data_clean$Intervention_months_factor == (i-1) & data_clean$HbDef==1))/length(which(data_clean$Gender == "Female" & data_clean$PostMeno == 0 & data_clean$Intervention_months_factor == (i-1))))*100
-  figure2PreF[i,3] <- (length(which(data_clean$Gender == "Female" & data_clean$PostMeno == 0 & data_clean$Intervention_months_factor == (i-1) & data_clean$IronDef==1))/length(which(data_clean$Gender == "Female" & data_clean$PostMeno == 0 & data_clean$Intervention_months_factor == (i-1))))*100
-    figure2PreF[i,4] <- (length(which(data_clean$Gender == "Female" & data_clean$PostMeno == 0 & data_clean$Intervention_months_factor == (i-1) & data_clean$LowFerr ==1))/length(which(data_clean$Gender == "Female" &  data_clean$PostMeno == 0 & data_clean$Intervention_months_factor == (i-1))))*100
+      figure2PreF[i,3] <- sqrt(((figure2PreF[i,2]/100)*(1 - (figure2PreF[i,2]/100)))/length(which(data_clean$Gender == "Female" & data_clean$PostMeno == 0 & data_clean$Intervention_months_factor == (i-1))))
+  figure2PreF[i,4] <- (length(which(data_clean$Gender == "Female" & data_clean$PostMeno == 0 & data_clean$Intervention_months_factor == (i-1) & data_clean$IronDef==1))/length(which(data_clean$Gender == "Female" & data_clean$PostMeno == 0 & data_clean$Intervention_months_factor == (i-1))))*100
+  figure2PreF[i,5] <- sqrt(((figure2PreF[i,4]/100)*(1 - (figure2PreF[i,4]/100)))/length(which(data_clean$Gender == "Female" & data_clean$PostMeno == 0 & data_clean$Intervention_months_factor == (i-1))))
+    figure2PreF[i,6] <- (length(which(data_clean$Gender == "Female" & data_clean$PostMeno == 0 & data_clean$Intervention_months_factor == (i-1) & data_clean$LowFerr ==1))/length(which(data_clean$Gender == "Female" &  data_clean$PostMeno == 0 & data_clean$Intervention_months_factor == (i-1))))*100
+    figure2PreF[i,7] <- sqrt(((figure2PreF[i,6]/100)*(1 - (figure2PreF[i,6]/100)))/length(which(data_clean$Gender == "Female" & data_clean$PostMeno == 0 & data_clean$Intervention_months_factor == (i-1))))
     
     mdatPreF = melt(figure2PreF, id.vars=c("Months"),
             measure.vars=c("ID", "LowFer"))
     mdatPreF$Months <- factor(mdatPreF$Months, levels = c("Control", "6-11", "12-17", "18-23", "24-29", "30-35", "36+"))
-    mdatPreF <- merge(mdatPreF, figure2PreF[,1:2], by = "Months")
-    mdatPreF[c(2,4,6, 8, 10,14), 4]<-NA
+    mdatPreF$se[1:7] <- figure2PreF[,5] 
+    mdatPreF$se[8:14] <- figure2PreF[,7]
     mdatPreF$Sex <- "Premenopausal females"
-          figure2PostF[i,2] <- (length(which(data_clean$Gender == "Female" & data_clean$PostMeno == 1 & data_clean$Intervention_months_factor == (i-1) & data_clean$HbDef==1))/length(which(data_clean$Gender == "Female" & data_clean$PostMeno == 1 & data_clean$Intervention_months_factor == (i-1))))*100
-  figure2PostF[i,3] <- (length(which(data_clean$Gender == "Female" & data_clean$PostMeno == 1 & data_clean$Intervention_months_factor == (i-1) & data_clean$IronDef==1))/length(which(data_clean$Gender == "Female" & data_clean$PostMeno == 1 & data_clean$Intervention_months_factor == (i-1))))*100
-    figure2PostF[i,4] <- (length(which(data_clean$Gender == "Female" & data_clean$PostMeno == 1 & data_clean$Intervention_months_factor == (i-1) & data_clean$LowFerr ==1))/length(which(data_clean$Gender == "Female" &  data_clean$PostMeno == 1 & data_clean$Intervention_months_factor == (i-1))))*100
+    mdatPreF <- merge(mdatPreF, figure2PreF[,1:3], by = "Months")
+    mdatPreF[c(2,4,6,8,10,12,14),6:7]<-NA
+    
+      figure2PostF[i,2] <- (length(which(data_clean$Gender == "Female" & data_clean$PostMeno == 1 & data_clean$Intervention_months_factor == (i-1) & data_clean$HbDef==1))/length(which(data_clean$Gender == "Female" & data_clean$PostMeno == 1 & data_clean$Intervention_months_factor == (i-1))))*100
+      figure2PostF[i,3] <- sqrt(((figure2PostF[i,2]/100)*(1 - (figure2PostF[i,2]/100)))/length(which(data_clean$Gender == "Female" & data_clean$PostMeno == 1 & data_clean$Intervention_months_factor == (i-1))))
+  figure2PostF[i,4] <- (length(which(data_clean$Gender == "Female" & data_clean$PostMeno == 1 & data_clean$Intervention_months_factor == (i-1) & data_clean$IronDef==1))/length(which(data_clean$Gender == "Female" & data_clean$PostMeno == 1 & data_clean$Intervention_months_factor == (i-1))))*100
+  figure2PostF[i,5] <- sqrt(((figure2PostF[i,4]/100)*(1 - (figure2PostF[i,4]/100)))/length(which(data_clean$Gender == "Female" & data_clean$PostMeno == 1 & data_clean$Intervention_months_factor == (i-1))))
+    figure2PostF[i,6] <- (length(which(data_clean$Gender == "Female" & data_clean$PostMeno == 1 & data_clean$Intervention_months_factor == (i-1) & data_clean$LowFerr ==1))/length(which(data_clean$Gender == "Female" &  data_clean$PostMeno == 1 & data_clean$Intervention_months_factor == (i-1))))*100
+    figure2PostF[i,7] <- sqrt(((figure2PostF[i,6]/100)*(1 - (figure2PostF[i,6]/100)))/length(which(data_clean$Gender == "Female" & data_clean$PostMeno == 1 & data_clean$Intervention_months_factor == (i-1))))
     
     mdatPostF = melt(figure2PostF, id.vars=c("Months"),
             measure.vars=c("ID", "LowFer"))
     mdatPostF$Months <- factor(mdatPostF$Months, levels = c("Control", "6-11", "12-17", "18-23", "24-29", "30-35", "36+"))
-    mdatPostF <- merge(mdatPostF, figure2PostF[,1:2], by = "Months")
-    mdatPostF[c(2,4,6, 8, 10,14), 4]<-NA
+    mdatPostF$se[1:7] <- figure2PostF[,5] 
+    mdatPostF$se[8:14] <- figure2PostF[,7]
     mdatPostF$Sex <- "Postmenopausal females"
+    mdatPostF <- merge(mdatPostF, figure2PostF[,1:3], by = "Months")
+    mdatPostF[c(2,4,6,8,10,12,14),6:7]<-NA
 
 }
 
@@ -322,6 +339,7 @@ mdat_total <- rbind(mdat, mdatPreF, mdatPostF)
 #| label: make figures
 
 # Function to scale secondary axis
+# Function to scale secondary axis
 scale_function <- function(x, scale, shift){
   return ((x)*scale - shift)
 }
@@ -330,10 +348,11 @@ scale_function <- function(x, scale, shift){
 inv_scale_function <- function(x, scale, shift){
   return ((x + shift)/scale)
 }
+
 sex <- c("Males", "Premenopausal females", "Postmenopausal females")
 
 for(i in sex){
-  max_first  <- max(mdat_total$value)+20   # Specify max of first y axis
+max_first  <- max(mdat_total$value)+20   # Specify max of first y axis
 max_second <- max(mdat_total$Hb, na.rm=T) # Specify max of second y axis
 min_first  <- min(mdat_total$value)+20   # Specify min of first y axis
 min_second <- min(mdat_total$Hb, na.rm=T) # Specify min of second y axis
@@ -342,27 +361,44 @@ min_second <- min(mdat_total$Hb, na.rm=T) # Specify min of second y axis
 scale = max_second/max_first
 shift = 0 #min_first - min_second
 
-plot <- ggplot(data=mdat_total[mdat_total$Sex==i,]) + 
-  geom_bar(aes(x=Months, y=value, fill = variable), stat="identity", width = 0.4, position = "stack") + 
-  xlab("Time since implementation (months)")+ 
+plot<- ggplot(data=mdat_total[mdat_total$Sex==i,], aes(x=Months, fill=variable))+
+  geom_bar(aes(x=Months, y=value, fill = variable), stat="identity", position = position_dodge(), width=0.4)+
+  geom_bar(aes(x=Months, y=inv_scale_function(Hb, scale, shift)), stat = "identity", width = 0.2,position = position_nudge(x = 0.35), col = "lightgrey", fill = "lightgrey")+
+  xlab("Time since implementation (months)")+
   ylab("Percentage")+
-  geom_bar(aes(x=Months, y=inv_scale_function(Hb, scale, shift)), stat = "identity", position = position_nudge(x = 0.5), width = 0.4, col = "grey", fill = "grey")+
-  ggtitle(paste0(i)) + 
+  geom_errorbar(aes(x=Months, ymin=value-(1.96*(se*100)), ymax=value+(1.96*(se*100))), width = 0.2, position=position_dodge(.4))+
+  geom_errorbar(aes(x=Months, ymin=inv_scale_function((Hb-(1.96*(Hb_se*100))),scale,shift), ymax=inv_scale_function((Hb+(1.96*(Hb_se*100))),scale, shift), width = 0.1), position = position_nudge(x = 0.35), col = "darkgrey")+
   scale_y_continuous(name = "Donors with low ferritin (%)", sec.axis = sec_axis(~scale_function(., scale, shift), name="Donors deferred based on Hb (%)"))+ 
   theme(axis.title.y = element_text(color = "black", size=10),
-        axis.title.y.right = element_text(color = "black", size=10))
+        axis.title.y.right = element_text(color = "darkgrey", size=10))
+  ggtitle(paste0(i))
+print(plot)
+}
+
+for(i in sex){
+plot<- ggplot(data=mdat_total[mdat_total$Sex==i,], aes(x=Months, fill=variable))+
+  geom_bar(aes(x=Months, y=value, fill = variable), stat="identity", position = position_dodge(), width=0.7)+
+  xlab("Time since implementation (months)")+
+  ylab("Percentage")+
+  geom_errorbar(aes(x=Months, ymin=value-(1.96*(se*100)), ymax=value+(1.96*(se*100))), width = 0.35, position=position_dodge(.7))+
+  ggtitle(paste0(i))
 print(plot)
 }
 ```
-```{r, warning=F, message=F}
 
+```{r, warning=F, message=F}
+pos <- position_dodge(.5)
 order <- c("Premenopausal females", "Postmenopausal females", "Males")
 mdat_total <- mdat_total %>% mutate(Sex = ordered(Sex, levels = order))
 plot <- ggplot(data=mdat_total) + 
-  geom_bar(aes(x=Months, y=value, fill = variable), stat="identity", width = 0.4, position = "stack") + scale_fill_manual(values = c("ID" = "#ff9700", "LowFer"= "#1cdbfc"), labels = c("Deficient (<15 ng/mL)", "Low (<30 ng/mL)"), name="Ferritin")+
+  geom_bar(aes(x=Months, y=value, fill = variable), stat="identity", width = 0.5, position = pos) +
+  geom_errorbar(aes(x=Months, ymin=value-(1.96*(se*100)), ymax=value+(1.96*(se*100)), group = variable), width = 0.35, position=pos)+
+  geom_bar(aes(x=Months, y=inv_scale_function(Hb, scale, shift), color = "grey"), stat = "identity", position = position_nudge(x = 0.35), width = 0.20, fill = "grey") +
+  geom_errorbar(aes(x=Months, ymin=inv_scale_function((Hb-(1.96*(Hb_se*100))),scale,shift), ymax=inv_scale_function((Hb+(1.96*(Hb_se*100))),scale, shift), width = 0.2), position = position_nudge(x = 0.35), col = "grey36")+
+  scale_fill_manual(values = c("ID" = "#ff9700", "LowFer"= "#1cdbfc"), labels = c("Iron deficient (<15 ng/mL)", "Low (15-30 ng/mL)"), name="Ferritin")+
   xlab("Time since implementation (months)")+ 
   ylab("Percentage")+
-  geom_bar(aes(x=Months, y=inv_scale_function(Hb, scale, shift), color = "grey"), stat = "identity", position = position_nudge(x = 0.5), width = 0.35, fill = "grey") + scale_color_manual(values = c("grey" = "grey"), labels = c("Hb < 12.5/13.5 g/dL (F/M)"), name="Deferral")+
+  scale_color_manual(values = c("grey" = "grey"), labels = c("Hb < 12.5/13.5 g/dL (F/M)"), name="Deferral")+
   ggtitle("Donors presenting with low ferritin and hemoglobin")+
   scale_y_continuous(name = "Donors with low ferritin (%)", sec.axis = sec_axis(~scale_function(., scale, shift), name="Donors deferred based on Hb (%)"))+ 
   theme(axis.title.y = element_text(color = "black", size=10),
