@@ -50,7 +50,9 @@ questionnaires.
 For each part of the analyses, a Quarto and HTML file are available.
 - FINDEM [QMD](FINDEM.qmd) & [HTML](FINDEM.html) files contain the analysis and results of the primary outcomes.
 - FINDEM_questionnaire [QMD](FINDEM_questionnaire.qmd) & [HTML](FINDEM_questionnaire.html) files contain the analysis and results of the secondary, questionnaire-based, outcomes.
-- FINDEM_tables_figures [QMD](FINDEM_tables_figures.qmd) & [HTML](FINDEM_tables_figures.html) files contain the scripts for creating the tables and figures in the manuscript or supplemental materials.
+- FINDEM_tables_figures [QMD](FINDEM_tables_figures.qmd) & [HTML](FINDEM_tables_figures.html) files contain the scripts for creating the tables and figures in the manuscript.
+- Supplementary_material [QMD](Supplementary_materials.qmd) & [HTML](Supplementary_materials.html) files contain the scripts for creating the tables and figures in supplementary materials.
+
 
 The Quarto (.qmd) files can be read and run using Rstudio, the HTML files can be downloaded to be viewed in a browser. 
 
