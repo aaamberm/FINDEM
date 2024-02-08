@@ -15,3 +15,8 @@ local
 .jpg
 .png
 .eps
+
+*.pdf
+*.jpg
+*.png
+*.eps
