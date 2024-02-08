@@ -73,7 +73,7 @@ data_clean <- data_raw%>%
 summary(data_clean)
 ```
 
-# Table S1
+# Table S8
 
 To give a clear overview of the differences between the pre- and post-implementation situation in the donation centers, we present the following table. To compare pre- and post-implementation completely, one could compare week 0 and 3.
 
@@ -97,9 +97,11 @@ SupTable3<-table1::table1(~ Age + Hb + Ferritin + Height + Weight + factor(IronD
 SupTable3
 ```
 
-# Table S2
 
-See section Descriptives of FINDEM_questionnaire.html file.
+
+# Table S1
+
+Data are presented in FINDEM_questionnaire.html file.
 
 # Table S3
 
@@ -340,7 +342,7 @@ pl <- c(
 tab_model(return_fit_preF, return_fit_postF, return_fitM, pred.labels = pl, dv.labels = c("Pre-menopausal women", "Post-menopausal women", "Men"), show.reflvl = T, title = "Donor return (on time) ajdusted for COVID")
 ```
 
-# Table S8
+# Table S2
 
 ```{r}
 data_raw <- readRDS("~/Amber/Data/FINDEM/FINDEM_data.rds")
@@ -421,7 +423,9 @@ for (i in 1:7){
 
 ```
 
-# Sensitivity analysis: OLS vs LMM
+# Figure S1
+
+Sensitivity analysis: OLS vs LMM
 
 ```{r, eval=F}
 #| label: data
@@ -602,7 +606,9 @@ p2
 ggsave(p2, file = "LMM_reg_p2.png", width = 7, height = 5)
 ```
 
-# Sensitivity analysis: 1-5 months as intervention vs control group
+# Figure S3
+
+Sensitivity analysis: 1-5 months as intervention vs control group
 ```{r, eval=F}
 #| label:  intervention group added
 hb_fit_M_control <- lm(Hb ~ Age + Weight + Height + CalendarTime + Intervention_months_factor2, data = data_scale, subset = data_scale$Gender == "Male")
@@ -699,7 +705,9 @@ ggsave(p2, file = "~/Amber/Data/FINDEM/Int_control_p2.png", width = 7, height = 
 ```
 
 
-# Sensitivity analysis: Donor return adjusted for COVID
+# Figure S2
+
+Sensitivity analysis: Donor return adjusted for COVID
 
 ```{r, message=F, error=F}
 
@@ -753,4 +761,42 @@ ggsave(p2, file = "~/Amber/Data/FINDEM/AdjustCOVID.png", width = 7, height = 4)
 ```{r}
 data_clean <- data_clean %>% mutate(Gender2 = case_when(Gender=="Male" ~ "Male", Gender == "Female" & PostMeno == 1 ~ "PostF", Gender == "Female" & PostMeno == 0 ~ "PreF")) %>%  mutate(Gender2 = dplyr::recode(Gender2, "Male" = "Males", "PostF" = "Postmenopausal females", "PreF" = "Premenopausal females"), Gender2 = ordered(Gender2, levels = c("Premenopausal females", "Postmenopausal females", "Males")))
 ggplot(data_clean[data_clean$Intervention_months=="0",], aes(x=as.factor(CalendarTime), y=Ferritin))+geom_boxplot()+ylim(0,100)+facet_wrap(~Gender2)+labs(x="Time since start of the study (months)", y= "Ferritin (ng/mL)") +ggtitle("Median and IQR of ferritin for the control group")
+```
+
+
+# Figure S4
+
+```{r}
+
+data_raw <- readRDS("~/Amber/Data/FINDEM/FINDEM_data.rds")
+#clean data
+data_clean <- data_raw%>% 
+  mutate(HbDef = factor(case_when(HbGoedgekeurd == 0 ~ 1, HbGoedgekeurd == 1 ~ 0))) %>% 
+  mutate(Gender = factor(Geslacht) %>% fct_recode("Male" = "Man", "Female" = "Vrouw")) %>% 
+  mutate(Timepoint = case_when(Meetweek == 0 ~ as.Date('2017-11-01'), Meetweek == 1 ~ as.Date('2019-03-01'), Meetweek == 2 ~ as.Date('2019-11-01'), TRUE ~ as.Date('2020-11-23'))) %>% 
+  mutate(Step = case_when(stap2 == 1.0 ~ as.Date('2017-11-01'), stap2 == 2.1 ~ as.Date('2018-05-01'), stap2 == 2.2~ as.Date('2018-10-01'), stap2 == 3.1 ~ as.Date('2019-03-01'), stap2 == 3.2 ~ as.Date('2019-10-01'), stap2 == 4.0 ~ as.Date('2019-11-01'))) %>% 
+  mutate(Intervention_months = interval(Step, Timepoint) %/% months(1)) %>% 
+  mutate(CalendarTime = interval(as.Date('2017-11-01'), Timepoint)%/% months(1))%>%
+  mutate(Intervention_months =  if_else(Intervention_months < 0, 0, Intervention_months)) %>% 
+  mutate(Intervention = factor(case_when(Intervention_months == 0 ~ 0, TRUE & !is.na(Intervention_months)~ 1)))%>% 
+  mutate(PostMeno = factor(case_when(Gender == "Female" & LeeftijdBijDOnatie < 45 ~ 0, Gender== "Female" & LeeftijdBijDOnatie >= 45 ~ 1))) %>%
+  dplyr::rename(Ferritin = Ferritine_FINDEM, Age = LeeftijdBijDOnatie, Weight = Gewicht, Height = Lengte)  %>% 
+  mutate(IronDef = factor(case_when(Ferritin >= 15 ~ 0, Ferritin < 15 ~ 1)))%>% 
+  dplyr::select(-HbGoedgekeurd, -Geslacht, -Einnummer)%>%
+  mutate(Intervention_months2 =  if_else(Intervention_months < 6, 0, Intervention_months))%>%
+  mutate(Intervention_months_factor = factor(case_when(Intervention_months == 0 ~ 0, Intervention_months == 1 ~ 0, Intervention_months == 5 ~ 0, Intervention_months == 8 ~ 1, Intervention_months == 10 ~ 1, Intervention_months == 12 ~ 2, Intervention_months == 13 ~ 2,Intervention_months == 16 ~ 2,Intervention_months == 18 ~ 3, Intervention_months == 20 ~ 3, Intervention_months == 24 ~ 4, Intervention_months == 25 ~ 4, Intervention_months == 30 ~ 5, Intervention_months == 36 ~ 6))) %>%
+  mutate(Intervention_months_factor2 = factor(case_when(Intervention_months == 0 ~ 0, Intervention_months == 1 ~ 1, Intervention_months == 5 ~ 1, Intervention_months == 8 ~ 2, Intervention_months == 10 ~ 2, Intervention_months == 12 ~ 3, Intervention_months == 13 ~ 3,Intervention_months == 16 ~ 4,Intervention_months == 18 ~ 4, Intervention_months == 20 ~ 4, Intervention_months == 24 ~ 5, Intervention_months == 25 ~ 5, Intervention_months == 30 ~ 6, Intervention_months == 36 ~ 7))) %>%
+  mutate(COVID = factor(ifelse(Donatiedatum >= "2019-10-01" & Donatiedatum <= "2020-02-01", 1,0))) %>% mutate(Hb = Hb/0.6206)
+
+data_clean<-data_clean%>%mutate(Hb = replace(Hb, Hb == (999/0.6206), NA))
+
+data_scale <- data_clean
+data_scale$Age <- scale(data_scale$Age, center=TRUE, scale = FALSE)
+data_scale$Weight <- scale(data_scale$Weight, center=TRUE, scale = FALSE)
+data_scale$Height <- scale(data_scale$Height, center=TRUE, scale = FALSE)
+data_scale$FerritinLog10 <- log10(data_scale$Ferritin) 
+```
+
+```{r}
+
 ```
