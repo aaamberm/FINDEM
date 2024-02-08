@@ -39,11 +39,12 @@ We load and scale the data.
 ```{r, collapse = T}
 #| label: process data
 data_clean <- read_sav("~/Amber/Data/FINDEM/Final_survey.sav") 
-data_clean <- data_clean %>% dplyr::select(-Einnummer, -Cluster, -Date, -Timepoint, -Meetweek) %>% 
+data_clean <- data_clean %>% dplyr::select(-Einnummer, -Cluster, -Date, -Meetweek) %>% 
   mutate(Gender = factor(Gender) %>% fct_recode("Male" = "1", "Female" = "2")) %>%
   mutate(PICA = factor(PICA) %>% fct_recode("Yes" = "1", "No" = "0")) %>% 
   mutate(RLS = factor(case_when(RLS == 2 ~ 1, RLS == 1 ~ 0)) %>% fct_recode("Yes" = "1", "No" = "0")) %>% 
   mutate(Intervention_months_factor = factor(case_when(Intervention_months_s < 6 ~ 0, Intervention_months_s >= 6 & Intervention_months_s <12 ~ 1, Intervention_months_s >= 12 & Intervention_months_s < 18 ~ 2, Intervention_months_s >= 18  & Intervention_months_s < 24 ~ 3,Intervention_months_s >= 24 ~ 4))) %>% 
+  mutate(CalendarTime = interval(as.Date('2017-11-01'), Timepoint)%/% months(1))%>%
   mutate(Fergroup = factor(case_when(Ferritin < 15 ~ 1, Ferritin >= 15 & Ferritin <= 30~ 2, Ferritin > 30 ~ 3)) %>%  fct_recode("Ferritin < 15" = "1", "Ferritin 15-30" = "2", "Ferritin > 30" = "3")) %>% 
   mutate(Warmglow = as.numeric(Warmglow))  %>% mutate(Warmglow = as.factor(case_when(Warmglow >=6 ~ 1, TRUE & !is.na(Warmglow) ~ 0)) %>% fct_recode("Yes" = "1", "No" = "0"), StartDate = substr(StartDate, 1, 10), StartDate = as.Date(StartDate, "%Y-%m-%d"), Meetweek = case_when(StartDate < "2019-11-01" ~ 2, StartDate > "2019-11-01" ~ 3))
 
@@ -96,9 +97,9 @@ PICA is diagnosed when donor answers yes to:  do you crave and regularly eat non
 
 ```{r}
 #| label: PICA log reg
-PICA_fitM <- glm(formula = PICA ~ Age + Weight + Height + Intervention_months_factor, data = data_scale, subset = data_scale$Gender == "Male" ,family = binomial)
-PICA_fit_preF <- glm(formula = PICA ~ Age + Weight + Height + Intervention_months_factor, data = data_scale, subset = data_scale$Gender == "Female" & data_scale$PostMeno == 0 ,family = binomial)
-PICA_fit_postF <- glm(formula = PICA ~ Age + Weight + Height + Intervention_months_factor, data = data_scale, subset = data_scale$Gender == "Female" & data_scale$PostMeno == 1 ,family = binomial)
+PICA_fitM <- glm(formula = PICA ~ Age + Weight + Height + CalendarTime+ Intervention_months_factor, data = data_scale, subset = data_scale$Gender == "Male" ,family = binomial)
+PICA_fit_preF <- glm(formula = PICA ~ Age + Weight + Height + CalendarTime+Intervention_months_factor, data = data_scale, subset = data_scale$Gender == "Female" & data_scale$PostMeno == 0 ,family = binomial)
+PICA_fit_postF <- glm(formula = PICA ~ Age + Weight + Height + CalendarTime+Intervention_months_factor, data = data_scale, subset = data_scale$Gender == "Female" & data_scale$PostMeno == 1 ,family = binomial)
 
 pl <- c(
   `(Intercept)` = "Intercept",
@@ -293,9 +294,9 @@ ggplot(subset(data_scale, !is.na(RLS)), aes(x=RLS, y=Ferritin)) +
 ### Models 
 ```{r}
 #| label: RLS log reg
-RLS_fitM <- glm(formula = RLS ~ Age + Weight + Height + Intervention_months_factor, data = data_scale, subset = data_scale$Gender == "Male" ,family = binomial)
-RLS_fit_preF <- glm(formula = RLS ~ Age + Weight + Height + Intervention_months_factor, data = data_scale, subset = data_scale$Gender == "Female" & data_scale$PostMeno == 0 ,family = binomial)
-RLS_fit_postF <- glm(formula = RLS ~ Age + Weight + Height + Intervention_months_factor, data = data_scale, subset = data_scale$Gender == "Female" & data_scale$PostMeno == 1 ,family = binomial)
+RLS_fitM <- glm(formula = RLS ~ Age + Weight + Height +CalendarTime+ Intervention_months_factor, data = data_scale, subset = data_scale$Gender == "Male" ,family = binomial)
+RLS_fit_preF <- glm(formula = RLS ~ Age + Weight + Height +CalendarTime+ Intervention_months_factor, data = data_scale, subset = data_scale$Gender == "Female" & data_scale$PostMeno == 0 ,family = binomial)
+RLS_fit_postF <- glm(formula = RLS ~ Age + Weight + Height +CalendarTime+ Intervention_months_factor, data = data_scale, subset = data_scale$Gender == "Female" & data_scale$PostMeno == 1 ,family = binomial)
 
 pl <- c(
   `(Intercept)` = "Intercept",
@@ -453,9 +454,9 @@ ggplot(data_scale, aes(x=Fergroup, y=CFQ_Total)) +
 ### Models
 ```{r}
 #| label: CFQ log reg
-CFQ_fitM <- lm(formula = CFQ_Total ~ Age + Weight + Height + Intervention_months_factor, data = data_scale, subset = data_scale$Gender == "Male")
-CFQ_fit_preF <- lm(formula = CFQ_Total ~ Age + Weight + Height + Intervention_months_factor, data = data_scale, subset = data_scale$Gender == "Female" & data_scale$PostMeno == 0)
-CFQ_fit_postF <- lm(formula = CFQ_Total ~ Age + Weight + Height + Intervention_months_factor, data = data_scale, subset = data_scale$Gender == "Female" & data_scale$PostMeno == 1)
+CFQ_fitM <- lm(formula = CFQ_Total ~ Age + Weight + Height +CalendarTime+ Intervention_months_factor, data = data_scale, subset = data_scale$Gender == "Male")
+CFQ_fit_preF <- lm(formula = CFQ_Total ~ Age + Weight + Height +CalendarTime+ Intervention_months_factor, data = data_scale, subset = data_scale$Gender == "Female" & data_scale$PostMeno == 0)
+CFQ_fit_postF <- lm(formula = CFQ_Total ~ Age + Weight + Height +CalendarTime+ Intervention_months_factor, data = data_scale, subset = data_scale$Gender == "Female" & data_scale$PostMeno == 1)
 
 pl <- c(
   `(Intercept)` = "Intercept",
@@ -702,9 +703,9 @@ ggplot(data_scale, aes(x=Fergroup, y=SF_ph)) +
 
 ```{r}
 #| label: physical health lin reg
-SF_ph_preF <- lm(SF_ph ~ Age + Weight + Height + as.factor(Intervention_months_factor), data = data_scale, subset  = data_scale$Gender == "Female" & data_scale$PostMeno == 0)
-SF_ph_postF <- lm(SF_ph ~ Age + Weight + Height + as.factor(Intervention_months_factor), data = data_scale,  subset = data_scale$Gender == "Female" & data_scale$PostMeno == 1)
-SF_ph_M <- lm(SF_ph ~ Age + Weight + Height + as.factor(Intervention_months_factor), data = data_scale,  subset = data_scale$Gender == "Male")
+SF_ph_preF <- lm(SF_ph ~ Age + Weight + Height +CalendarTime+ as.factor(Intervention_months_factor), data = data_scale, subset  = data_scale$Gender == "Female" & data_scale$PostMeno == 0)
+SF_ph_postF <- lm(SF_ph ~ Age + Weight + Height +CalendarTime+ as.factor(Intervention_months_factor), data = data_scale,  subset = data_scale$Gender == "Female" & data_scale$PostMeno == 1)
+SF_ph_M <- lm(SF_ph ~ Age + Weight + Height +CalendarTime+ as.factor(Intervention_months_factor), data = data_scale,  subset = data_scale$Gender == "Male")
 
 pl <- c(
   `(Intercept)` = "Intercept",
@@ -901,9 +902,9 @@ We conclude that the assumptions were violated and thus we use robust models.
 ### Robust models
 ```{r}
 #| label: robust models physical health
-SF_ph_preF_robust <- lmrob(SF_ph ~ Age + Weight + Height + as.factor(Intervention_months_factor), data = data_scale, subset  = data_scale$Gender == "Female" & data_scale$PostMeno == 0)
-SF_ph_postF_robust <- lmrob(SF_ph ~ Age + Weight + Height + as.factor(Intervention_months_factor), data = data_scale,  subset = data_scale$Gender == "Female" & data_scale$PostMeno == 1)
-SF_ph_Mrobust <- lmrob(SF_ph ~ Age + Weight + Height + as.factor(Intervention_months_factor), data = data_scale, subset = data_scale$Gender == "Male")
+SF_ph_preF_robust <- lmrob(SF_ph ~ Age + Weight + Height +CalendarTime+ as.factor(Intervention_months_factor), data = data_scale, subset  = data_scale$Gender == "Female" & data_scale$PostMeno == 0)
+SF_ph_postF_robust <- lmrob(SF_ph ~ Age + Weight + Height +CalendarTime+ as.factor(Intervention_months_factor), data = data_scale,  subset = data_scale$Gender == "Female" & data_scale$PostMeno == 1)
+SF_ph_Mrobust <- lmrob(SF_ph ~ Age + Weight + Height +CalendarTime+ as.factor(Intervention_months_factor), data = data_scale, subset = data_scale$Gender == "Male")
 
 pl <- c(
   `(Intercept)` = "Intercept",
@@ -943,9 +944,9 @@ ggplot(data_scale, aes(x=Fergroup, y=SF_mh)) +
 
 ```{r}
 #| label: models mental health
-SF_mh_preF<- lm(SF_mh ~ Age + Weight + Height + as.factor(Intervention_months_factor) , data = data_scale, subset  = data_scale$Gender == "Female" & data_scale$PostMeno == 0)
-SF_mh_postF <- lm(SF_mh ~ Age + Weight + Height + as.factor(Intervention_months_factor) , data = data_scale, subset = data_scale$Gender == "Female" & data_scale$PostMeno == 1)
-SF_mh_M <- lm(SF_mh ~ Age + Weight + Height + as.factor(Intervention_months_factor), data = data_scale, subset = data_scale$Gender == "Male")
+SF_mh_preF<- lm(SF_mh ~ Age + Weight + Height +CalendarTime+ as.factor(Intervention_months_factor) , data = data_scale, subset  = data_scale$Gender == "Female" & data_scale$PostMeno == 0)
+SF_mh_postF <- lm(SF_mh ~ Age + Weight + Height +CalendarTime+ as.factor(Intervention_months_factor) , data = data_scale, subset = data_scale$Gender == "Female" & data_scale$PostMeno == 1)
+SF_mh_M <- lm(SF_mh ~ Age + Weight + Height +CalendarTime+ as.factor(Intervention_months_factor), data = data_scale, subset = data_scale$Gender == "Male")
 
 pl <- c(
   `(Intercept)` = "Intercept",
@@ -1149,9 +1150,9 @@ We conclude that the assumptions were violated and thus we use robust models.
 
 ```{r}
 #| label: robust models mh
-SF_mh_preF_robust <- lmrob(SF_mh ~ Age + Weight + Height + as.factor(Intervention_months_factor) , data = data_scale, subset  = data_scale$Gender == "Female" & data_scale$PostMeno == 0)
-SF_mh_postF_robust <- lmrob(SF_mh ~ Age + Weight + Height + as.factor(Intervention_months_factor) , data = data_scale, subset = data_scale$Gender == "Female" & data_scale$PostMeno == 1)
-SF_mh_Mrobust <- lmrob(SF_mh ~ Age + Weight + Height + as.factor(Intervention_months_factor), data = data_scale, subset = data_scale$Gender == "Male")
+SF_mh_preF_robust <- lmrob(SF_mh ~ Age + Weight + Height +CalendarTime+ as.factor(Intervention_months_factor) , data = data_scale, subset  = data_scale$Gender == "Female" & data_scale$PostMeno == 0)
+SF_mh_postF_robust <- lmrob(SF_mh ~ Age + Weight + Height +CalendarTime+ as.factor(Intervention_months_factor) , data = data_scale, subset = data_scale$Gender == "Female" & data_scale$PostMeno == 1)
+SF_mh_Mrobust <- lmrob(SF_mh ~ Age + Weight + Height +CalendarTime+ as.factor(Intervention_months_factor), data = data_scale, subset = data_scale$Gender == "Male")
 
 
 pl <- c(
@@ -1207,9 +1208,9 @@ ggplot(subset(data_scale, !is.na(Warmglow)), aes(x=Warmglow, y=Ferritin)) +
 ### Models
 ```{r}
 #| label: models warm glow
-WG_preF <- glm(Warmglow ~ Age + Weight + Height + Intervention_months_factor , data = data_scale, subset = data_scale$Gender == "Female" & data_scale$PostMeno == 0,family = binomial)
-WG_postF <- glm(Warmglow ~ Age + Weight + Height + Intervention_months_factor , data = data_scale, subset = data_scale$Gender == "Female" & data_scale$PostMeno == 1,family = binomial)
-WG_M <- glm(Warmglow ~ Age + Weight + Height + Intervention_months_factor , data = data_scale, subset = data_scale$Gender == "Male" ,family = binomial)
+WG_preF <- glm(Warmglow ~ Age + Weight + Height +CalendarTime+ Intervention_months_factor , data = data_scale, subset = data_scale$Gender == "Female" & data_scale$PostMeno == 0,family = binomial)
+WG_postF <- glm(Warmglow ~ Age + Weight + Height +CalendarTime+ Intervention_months_factor , data = data_scale, subset = data_scale$Gender == "Female" & data_scale$PostMeno == 1,family = binomial)
+WG_M <- glm(Warmglow ~ Age + Weight + Height +CalendarTime+ Intervention_months_factor , data = data_scale, subset = data_scale$Gender == "Male" ,family = binomial)
 
 pl <- c(
   `(Intercept)` = "Intercept",
@@ -1336,9 +1337,9 @@ ggplot(data_scale, aes(x=Fergroup, y=CIS_Totalmean)) +
 ### Models
 ```{r}
 #| label: models fatigue
-CIS_preF <- lm(CIS_Totalmean  ~ Age + Weight + Height + Intervention_months_factor, data = data_scale, subset = data_scale$Gender == "Female" & data_scale$PostMeno == 0)
-CIS_postF <- lm(CIS_Totalmean  ~ Age + Weight + Height + Intervention_months_factor, data = data_scale, subset = data_scale$Gender == "Female" & data_scale$PostMeno == 1)
-CIS_M <- lm(CIS_Totalmean  ~ Age + Weight + Height + Intervention_months_factor, data = data_scale, subset = data_scale$Gender == "Male")
+CIS_preF <- lm(CIS_Totalmean  ~ Age + Weight + Height +CalendarTime+ Intervention_months_factor, data = data_scale, subset = data_scale$Gender == "Female" & data_scale$PostMeno == 0)
+CIS_postF <- lm(CIS_Totalmean  ~ Age + Weight + Height +CalendarTime+ Intervention_months_factor, data = data_scale, subset = data_scale$Gender == "Female" & data_scale$PostMeno == 1)
+CIS_M <- lm(CIS_Totalmean  ~ Age + Weight + Height +CalendarTime+ Intervention_months_factor, data = data_scale, subset = data_scale$Gender == "Male")
 
 pl <- c(
   `(Intercept)` = "Intercept",
@@ -1540,9 +1541,9 @@ We conclude that the assumptions were violated and thus we use robust models.
 ### Robust models
 ```{r}
 #| label: robust models fatigue
-CIS_preF_robust <- lmrob(CIS_Totalmean ~ Age + Weight + Height + as.factor(Intervention_months_factor) , data = data_scale, subset  = data_scale$Gender == "Female" & data_scale$PostMeno == 0)
-CIS_postF_robust <- lmrob(CIS_Totalmean ~ Age + Weight + Height + as.factor(Intervention_months_factor) , data = data_scale, subset  = data_scale$Gender == "Female" & data_scale$PostMeno == 1)
-CIS_M_robust <- lmrob(CIS_Totalmean ~ Age + Weight + Height + as.factor(Intervention_months_factor) , data = data_scale, subset  = data_scale$Gender == "Male")
+CIS_preF_robust <- lmrob(CIS_Totalmean ~ Age + Weight + Height +CalendarTime+ as.factor(Intervention_months_factor) , data = data_scale, subset  = data_scale$Gender == "Female" & data_scale$PostMeno == 0)
+CIS_postF_robust <- lmrob(CIS_Totalmean ~ Age + Weight + Height +CalendarTime+ as.factor(Intervention_months_factor) , data = data_scale, subset  = data_scale$Gender == "Female" & data_scale$PostMeno == 1)
+CIS_M_robust <- lmrob(CIS_Totalmean ~ Age + Weight + Height +CalendarTime+ as.factor(Intervention_months_factor) , data = data_scale, subset  = data_scale$Gender == "Male")
 
 pl <- c(
   `(Intercept)` = "Intercept",

@@ -42,10 +42,11 @@ data_clean <- data_raw%>%
   mutate(Timepoint = case_when(Meetweek == 0 ~ as.Date('2017-11-01'), Meetweek == 1 ~ as.Date('2019-03-01'), Meetweek == 2 ~ as.Date('2019-11-01'), TRUE ~ as.Date('2020-11-23'))) %>% 
   mutate(Step = case_when(stap2 == 1.0 ~ as.Date('2017-11-01'), stap2 == 2.1 ~ as.Date('2018-05-01'), stap2 == 2.2~ as.Date('2018-10-01'), stap2 == 3.1 ~ as.Date('2019-03-01'), stap2 == 3.2 ~ as.Date('2019-10-01'), stap2 == 4.0 ~ as.Date('2019-11-01'))) %>% 
   mutate(Intervention_months = interval(Step, Timepoint) %/% months(1)) %>% 
+  mutate(CalendarTime = interval(as.Date('2017-11-01'), Timepoint)%/% months(1))%>%
   mutate(Intervention_months =  if_else(Intervention_months < 0, 0, Intervention_months)) %>% 
   mutate(Intervention = factor(case_when(Intervention_months == 0 ~ 0, TRUE & !is.na(Intervention_months)~ 1)))%>% 
   mutate(PostMeno = factor(case_when(Gender == "Female" & LeeftijdBijDOnatie < 45 ~ 0, Gender== "Female" & LeeftijdBijDOnatie >= 45 ~ 1))) %>%
-  rename(Ferritin = Ferritine_FINDEM, Age = LeeftijdBijDOnatie, Weight = Gewicht, Height = Lengte)  %>% 
+  dplyr::rename(Ferritin = Ferritine_FINDEM, Age = LeeftijdBijDOnatie, Weight = Gewicht, Height = Lengte)  %>% 
   mutate(IronDef = factor(case_when(Ferritin >= 15 ~ 0, Ferritin < 15 ~ 1)))%>% 
   dplyr::select(-HbGoedgekeurd, -Geslacht, -Einnummer)%>%
   mutate(Intervention_months2 =  if_else(Intervention_months < 6, 0, Intervention_months))%>%
@@ -63,7 +64,7 @@ summary(data_clean)
 data_clean<-data_clean%>%mutate(Hb = replace(Hb, Hb == (999/0.6206), NA))
 
 #save the data as an Rdta file
-save(data_clean, file = "~/Amber/Data/FINDEM/findem_clean.Rdta")
+saveRDS(data_clean, file = "~/Amber/Data/FINDEM/findem_clean.rds")
 ```
 
 Now, we can have a quick look at the cleaned data:
@@ -158,11 +159,11 @@ As defined in the protocol, we will fit linear mixed models with random effects 
 
 ```{r, warnings = FALSE, messages = FALSE}
 #| label: LMM hb 
-hb_fitM <- lmer(Hb ~ Age + Weight + Height + Intervention_months_factor + (1|Cluster), data = data_clean, subset = data_clean$Gender == "Male")
+hb_fitM <- lmer(Hb ~ Age + Weight + Height + CalendarTime + Intervention_months_factor + (1|Cluster), data = data_clean, subset = data_clean$Gender == "Male")
 
-hb_fit_preF <- lmer(Hb ~ Age + Weight + Height + Intervention_months_factor + (1|Cluster), data = data_clean, subset = data_clean$Gender == "Female" & data_clean$PostMeno == 0)
+hb_fit_preF <- lmer(Hb ~ Age + Weight + Height + CalendarTime + Intervention_months_factor + (1|Cluster), data = data_clean, subset = data_clean$Gender == "Female" & data_clean$PostMeno == 0)
 
-hb_fit_postF <- lmer(Hb ~ Age + Weight + Height + Intervention_months_factor + (1|Cluster), data = data_clean, subset = data_clean$Gender == "Female" & data_clean$PostMeno == 1)
+hb_fit_postF <- lmer(Hb ~ Age + Weight + Height + CalendarTime + Intervention_months_factor + (1|Cluster), data = data_clean, subset = data_clean$Gender == "Female" & data_clean$PostMeno == 1)
 
 pl <- c(
   `(Intercept)` = "Intercept",
@@ -181,11 +182,11 @@ tab_model(hb_fit_preF, hb_fit_postF, hb_fitM, pred.labels = pl, dv.labels = c("P
 
 ```{r, warnings = FALSE, messages = FALSE}
 #| label: LMM ferritin 
-ferritin_fitM <- lmer(Ferritin ~ Age + Weight + Height + Intervention_months_factor + (1|Cluster), data = data_clean, subset = data_clean$Gender == "Male")
+ferritin_fitM <- lmer(Ferritin ~ Age + Weight + Height + CalendarTime+ Intervention_months_factor + (1|Cluster), data = data_clean, subset = data_clean$Gender == "Male")
 
-ferritin_fit_preF <- lmer(Ferritin ~ Age + Weight + Height + Intervention_months_factor + (1|Cluster), data = data_clean, subset = data_clean$Gender == "Female" & data_clean$PostMeno == 0)
+ferritin_fit_preF <- lmer(Ferritin ~ Age + Weight + Height + CalendarTime+ Intervention_months_factor + (1|Cluster), data = data_clean, subset = data_clean$Gender == "Female" & data_clean$PostMeno == 0)
 
-ferritin_fit_postF <- lmer(Ferritin ~ Age + Weight + Height + Intervention_months_factor + (1|Cluster), data = data_clean, subset = data_clean$Gender == "Female" & data_clean$PostMeno == 1)
+ferritin_fit_postF <- lmer(Ferritin ~ Age + Weight + Height + CalendarTime+ Intervention_months_factor + (1|Cluster), data = data_clean, subset = data_clean$Gender == "Female" & data_clean$PostMeno == 1)
 
 pl <- c(
   `(Intercept)` = "Intercept",
@@ -207,11 +208,11 @@ We see that there is an issue regarding singularity in the model fit for postmen
 ```{r, warnings = FALSE, messages = FALSE}
 #| label: LMM hb deferral 
 
-hbdef_fitM <- glmer(formula = HbDef ~ Age + Weight + Height + Intervention_months_factor + (1|Cluster), data = data_clean, subset = data_clean$Gender == "Female" & data_clean$PostMeno == 0, family = binomial)
+hbdef_fitM <- glmer(formula = HbDef ~ Age + Weight + Height + CalendarTime+ Intervention_months_factor + (1|Cluster), data = data_clean, subset = data_clean$Gender == "Female" & data_clean$PostMeno == 0, family = binomial)
 
-hbdef_fit_preF <- glmer(formula = HbDef ~ Age + Weight + Height + Intervention_months_factor + (1|Cluster), data = data_clean, subset = data_clean$Gender == "Female" & data_clean$PostMeno == 0, family = binomial)
+hbdef_fit_preF <- glmer(formula = HbDef ~ Age + Weight + Height + CalendarTime+ Intervention_months_factor + (1|Cluster), data = data_clean, subset = data_clean$Gender == "Female" & data_clean$PostMeno == 0, family = binomial)
 
-hbdef_fit_postF <- glmer(formula = HbDef ~ Age + Weight + Height + Intervention_months_factor + (1|Cluster), data = data_clean, subset = data_clean$Gender == "Female" & data_clean$PostMeno == 1, family = binomial)
+hbdef_fit_postF <- glmer(formula = HbDef ~ Age + Weight + Height + CalendarTime+ Intervention_months_factor + (1|Cluster), data = data_clean, subset = data_clean$Gender == "Female" & data_clean$PostMeno == 1, family = binomial)
 
 pl <- c(
   `(Intercept)` = "Intercept",
@@ -231,11 +232,11 @@ tab_model(hbdef_fit_preF, hbdef_fit_postF, hbdef_fitM, pred.labels = pl, dv.labe
 ```{r, warnings = FALSE, messages = FALSE}
 #| label: LMM iron deficiency 
 
-ID_fitM <- glmer(formula = IronDef ~ Age + Weight + Height + Intervention_months_factor + (1|Cluster), data = data_clean, subset = data_clean$Gender == "Female" & data_clean$PostMeno == 0, family = binomial)
+ID_fitM <- glmer(formula = IronDef ~ Age + Weight + Height + CalendarTime+ Intervention_months_factor + (1|Cluster), data = data_clean, subset = data_clean$Gender == "Female" & data_clean$PostMeno == 0, family = binomial)
 
-ID_fit_preF <- glmer(formula = IronDef ~ Age + Weight + Height + Intervention_months_factor + (1|Cluster), data = data_clean, subset = data_clean$Gender == "Female" & data_clean$PostMeno == 0, family = binomial)
+ID_fit_preF <- glmer(formula = IronDef ~ Age + Weight + Height + CalendarTime+ Intervention_months_factor + (1|Cluster), data = data_clean, subset = data_clean$Gender == "Female" & data_clean$PostMeno == 0, family = binomial)
 
-ID_fit_postF <- glmer(formula = IronDef ~ Age + Weight + Height + Intervention_months_factor + (1|Cluster), data = data_clean, subset = data_clean$Gender == "Female" & data_clean$PostMeno == 1, family = binomial)
+ID_fit_postF <- glmer(formula = IronDef ~ Age + Weight + Height + CalendarTime+ Intervention_months_factor + (1|Cluster), data = data_clean, subset = data_clean$Gender == "Female" & data_clean$PostMeno == 1, family = binomial)
 
 pl <- c(
   `(Intercept)` = "Intercept",
@@ -262,11 +263,11 @@ The basic models for Hb deferral and iron deficiency in males and premenopausal 
 
 ```{r, warnings = FALSE, messages = FALSE}
 #| label: LMM hb scaled
-hb_fitM <- lmer(Hb ~ Age + Weight + Height + Intervention_months_factor + (1|Cluster), data = data_scale, subset = data_scale$Gender == "Male")
+hb_fitM <- lmer(Hb ~ Age + Weight + Height + CalendarTime+ Intervention_months_factor + (1|Cluster), data = data_scale, subset = data_scale$Gender == "Male")
 
-hb_fit_preF <- lmer(Hb ~ Age + Weight + Height + Intervention_months_factor + (1|Cluster), data = data_scale, subset = data_scale$Gender == "Female" & data_scale$PostMeno == 0)
+hb_fit_preF <- lmer(Hb ~ Age + Weight + Height + CalendarTime+ Intervention_months_factor + (1|Cluster), data = data_scale, subset = data_scale$Gender == "Female" & data_scale$PostMeno == 0)
 
-hb_fit_postF <- lmer(Hb ~ Age + Weight + Height + Intervention_months_factor + (1|Cluster), data = data_scale, subset = data_scale$Gender == "Female" & data_scale$PostMeno == 1)
+hb_fit_postF <- lmer(Hb ~ Age + Weight + Height + CalendarTime+ Intervention_months_factor + (1|Cluster), data = data_scale, subset = data_scale$Gender == "Female" & data_scale$PostMeno == 1)
 
 pl <- c(
   `(Intercept)` = "Intercept",
@@ -285,11 +286,11 @@ tab_model(hb_fit_preF, hb_fit_postF, hb_fitM, pred.labels = pl, dv.labels = c("P
 
 ```{r, warnings = FALSE, messages = FALSE}
 #| label: LMM ferritin scaled
-ferritin_fitM <- lmer(FerritinLog10 ~ Age + Weight + Height + Intervention_months_factor + (1|Cluster), data = data_scale, subset = data_scale$Gender == "Male")
+ferritin_fitM <- lmer(FerritinLog10 ~ Age + Weight + Height + CalendarTime+ Intervention_months_factor + (1|Cluster), data = data_scale, subset = data_scale$Gender == "Male")
 
-ferritin_fit_preF <- lmer(FerritinLog10 ~ Age + Weight + Height + Intervention_months_factor + (1|Cluster), data = data_scale, subset = data_scale$Gender == "Female" & data_scale$PostMeno == 0)
+ferritin_fit_preF <- lmer(FerritinLog10 ~ Age + Weight + Height + CalendarTime+ Intervention_months_factor + (1|Cluster), data = data_scale, subset = data_scale$Gender == "Female" & data_scale$PostMeno == 0)
 
-ferritin_fit_postF <- lmer(FerritinLog10 ~ Age + Weight + Height + Intervention_months_factor + (1|Cluster), data = data_scale, subset = data_scale$Gender == "Female" & data_scale$PostMeno == 1)
+ferritin_fit_postF <- lmer(FerritinLog10 ~ Age + Weight + Height + CalendarTime+ Intervention_months_factor + (1|Cluster), data = data_scale, subset = data_scale$Gender == "Female" & data_scale$PostMeno == 1)
 
 pl <- c(
   `(Intercept)` = "Intercept",
@@ -309,11 +310,11 @@ tab_model(ferritin_fit_preF, ferritin_fit_postF, ferritin_fitM, pred.labels = pl
 ```{r, warnings = FALSE, messages = FALSE}
 #| label: LMM hb deferral scaled
 
-hbdef_fitM <- glmer(formula = HbDef ~ Age + Weight + Height + Intervention_months_factor + (1|Cluster), data = data_scale, subset = data_scale$Gender == "Female" & data_scale$PostMeno == 0, family = binomial)
+hbdef_fitM <- glmer(formula = HbDef ~ Age + Weight + Height + CalendarTime+ Intervention_months_factor + (1|Cluster), data = data_scale, subset = data_scale$Gender == "Female" & data_scale$PostMeno == 0, family = binomial)
 
-hbdef_fit_preF <- glmer(formula = HbDef ~ Age + Weight + Height + Intervention_months_factor + (1|Cluster), data = data_scale, subset = data_scale$Gender == "Female" & data_scale$PostMeno == 0, family = binomial)
+hbdef_fit_preF <- glmer(formula = HbDef ~ Age + Weight + Height + CalendarTime+ Intervention_months_factor + (1|Cluster), data = data_scale, subset = data_scale$Gender == "Female" & data_scale$PostMeno == 0, family = binomial)
 
-hbdef_fit_postF <- glmer(formula = HbDef ~ Age + Weight + Height + Intervention_months_factor + (1|Cluster), data = data_scale, subset = data_scale$Gender == "Female" & data_scale$PostMeno == 1, family = binomial)
+hbdef_fit_postF <- glmer(formula = HbDef ~ Age + Weight + Height + CalendarTime+ Intervention_months_factor + (1|Cluster), data = data_scale, subset = data_scale$Gender == "Female" & data_scale$PostMeno == 1, family = binomial)
 
 pl <- c(
   `(Intercept)` = "Intercept",
@@ -333,11 +334,11 @@ tab_model(hbdef_fit_preF, hbdef_fit_postF, hbdef_fitM, pred.labels = pl, dv.labe
 ```{r, warnings = FALSE, messages = FALSE}
 #| label: LMM iron deficiency scaled
 
-ID_fitM <- glmer(formula = IronDef ~ Age + Weight + Height + Intervention_months_factor + (1|Cluster), data = data_scale, subset = data_scale$Gender == "Female" & data_scale$PostMeno == 0, family = binomial)
+ID_fitM <- glmer(formula = IronDef ~ Age + Weight + Height + CalendarTime+ Intervention_months_factor + (1|Cluster), data = data_scale, subset = data_scale$Gender == "Female" & data_scale$PostMeno == 0, family = binomial)
 
-ID_fit_preF <- glmer(formula = IronDef ~ Age + Weight + Height + Intervention_months_factor + (1|Cluster), data = data_scale, subset = data_scale$Gender == "Female" & data_scale$PostMeno == 0, family = binomial)
+ID_fit_preF <- glmer(formula = IronDef ~ Age + Weight + Height + CalendarTime+ Intervention_months_factor + (1|Cluster), data = data_scale, subset = data_scale$Gender == "Female" & data_scale$PostMeno == 0, family = binomial)
 
-ID_fit_postF <- glmer(formula = IronDef ~ Age + Weight + Height + Intervention_months_factor + (1|Cluster), data = data_scale, subset = data_scale$Gender == "Female" & data_scale$PostMeno == 1, family = binomial)
+ID_fit_postF <- glmer(formula = IronDef ~ Age + Weight + Height + CalendarTime+ Intervention_months_factor + (1|Cluster), data = data_scale, subset = data_scale$Gender == "Female" & data_scale$PostMeno == 1, family = binomial)
 
 pl <- c(
   `(Intercept)` = "Intercept",
@@ -385,9 +386,9 @@ Which indicates that the random effects of the donation center clusters in these
 ### Hb levels
 ```{r}
 #| label: lin reg Hb levels
-hb_fitM <- lm(Hb ~ Age + Weight + Height + Intervention_months_factor, data = data_scale, subset = data_scale$Gender == "Male")
-hb_fit_preF <- lm(Hb ~ Age + Weight + Height + Intervention_months_factor, data = data_scale, subset = data_scale$Gender == "Female" & data_scale$PostMeno == 0)
-hb_fit_postF <- lm(Hb ~ Age + Weight + Height + Intervention_months_factor, data = data_scale, subset = data_scale$Gender == "Female" & data_scale$PostMeno == 1)
+hb_fitM <- lm(Hb ~ Age + Weight + Height + CalendarTime + Intervention_months_factor, data = data_scale, subset = data_scale$Gender == "Male")
+hb_fit_preF <- lm(Hb ~ Age + Weight + Height + CalendarTime + Intervention_months_factor, data = data_scale, subset = data_scale$Gender == "Female" & data_scale$PostMeno == 0)
+hb_fit_postF <- lm(Hb ~ Age + Weight + Height + CalendarTime + Intervention_months_factor, data = data_scale, subset = data_scale$Gender == "Female" & data_scale$PostMeno == 1)
 
 pl <- c(
   `(Intercept)` = "Intercept",
@@ -405,9 +406,9 @@ tab_model(hb_fit_preF, hb_fit_postF, hb_fitM, pred.labels = pl, dv.labels = c("P
 ### Ferritin levels
 ```{r}
 #| label: lin reg ferritin levels
-ferritin_fitM <- lm(FerritinLog10 ~ Age + Weight + Height + Intervention_months_factor, data = data_scale, subset = data_scale$Gender == "Male")
-ferritin_fit_preF <- lm(FerritinLog10 ~ Age + Weight + Height + Intervention_months_factor, data = data_scale, subset = data_scale$Gender == "Female" & data_scale$PostMeno == 0)
-ferritin_fit_postF <- lm(FerritinLog10 ~ Age + Weight + Height + Intervention_months_factor, data = data_scale, subset = data_scale$Gender == "Female" & data_scale$PostMeno == 1)
+ferritin_fitM <- lm(FerritinLog10 ~ Age + Weight + Height + CalendarTime + Intervention_months_factor, data = data_scale, subset = data_scale$Gender == "Male")
+ferritin_fit_preF <- lm(FerritinLog10 ~ Age + Weight + Height + CalendarTime + Intervention_months_factor, data = data_scale, subset = data_scale$Gender == "Female" & data_scale$PostMeno == 0)
+ferritin_fit_postF <- lm(FerritinLog10 ~ Age + Weight + Height + CalendarTime + Intervention_months_factor, data = data_scale, subset = data_scale$Gender == "Female" & data_scale$PostMeno == 1)
 
 pl <- c(
   `(Intercept)` = "Intercept",
@@ -428,11 +429,11 @@ tab_model(ferritin_fit_preF, ferritin_fit_postF, ferritin_fitM, pred.labels = pl
 ```{r, message=F, error=F}
 #| label: log reg Hb deferral
 
-hbdef_fitM <- glm(formula = HbDef ~ Age + Weight + Height + Intervention_months_factor, data = data_scale, subset = data_scale$Gender == "Male" ,family = binomial)
+hbdef_fitM <- glm(formula = HbDef ~ Age + Weight + Height + CalendarTime + Intervention_months_factor, data = data_scale, subset = data_scale$Gender == "Male" ,family = binomial)
 
-hbdef_fit_preF <- glm(formula = HbDef ~ Age + Weight + Height + Intervention_months_factor, data = data_scale, subset = data_scale$Gender == "Female" & data_scale$PostMeno == 0,family = binomial)
+hbdef_fit_preF <- glm(formula = HbDef ~ Age + Weight + Height + CalendarTime + Intervention_months_factor, data = data_scale, subset = data_scale$Gender == "Female" & data_scale$PostMeno == 0,family = binomial)
 
-hbdef_fit_postF <- glm(formula = HbDef ~ Age + Weight + Height + Intervention_months_factor, data = data_scale, subset = data_scale$Gender == "Female" & data_scale$PostMeno == 1,family = binomial)
+hbdef_fit_postF <- glm(formula = HbDef ~ Age + Weight + Height + CalendarTime + Intervention_months_factor, data = data_scale, subset = data_scale$Gender == "Female" & data_scale$PostMeno == 1,family = binomial)
 
 pl <- c(
   `(Intercept)` = "Intercept",
@@ -450,11 +451,11 @@ tab_model(hbdef_fit_preF, hbdef_fit_postF, hbdef_fitM, pred.labels = pl, dv.labe
 ```{r, message=F, error=F}
 #| label: log reg iron deficiency
 
-ID_fitM <- glm(formula = IronDef ~ Age + Weight + Height + Intervention_months_factor, data = data_scale, subset = data_scale$Gender == "Male" ,family = binomial)
+ID_fitM <- glm(formula = IronDef ~ Age + Weight + Height + CalendarTime + Intervention_months_factor, data = data_scale, subset = data_scale$Gender == "Male" ,family = binomial)
 
-ID_fit_preF <- glm(formula = IronDef ~ Age + Weight + Height + Intervention_months_factor, data = data_scale, subset = data_scale$Gender == "Female" & data_scale$PostMeno == 0,family = binomial)
+ID_fit_preF <- glm(formula = IronDef ~ Age + Weight + Height + CalendarTime + Intervention_months_factor, data = data_scale, subset = data_scale$Gender == "Female" & data_scale$PostMeno == 0,family = binomial)
 
-ID_fit_postF <- glm(formula = IronDef ~ Age + Weight + Height + Intervention_months_factor, data = data_scale, subset = data_scale$Gender == "Female" & data_scale$PostMeno == 1,family = binomial)
+ID_fit_postF <- glm(formula = IronDef ~ Age + Weight + Height + CalendarTime + Intervention_months_factor, data = data_scale, subset = data_scale$Gender == "Female" & data_scale$PostMeno == 1,family = binomial)
 
 pl <- c(
   `(Intercept)` = "Intercept",
@@ -472,9 +473,9 @@ tab_model(ID_fit_preF, ID_fit_postF, ID_fitM, pred.labels = pl, dv.labels = c("P
 ### Donor return (on time)
 ```{r, message=F, error=F}
 #| label: log reg return on time
-returnOT_fitM <- glm(formula = ReturnOpTijd ~ Age + Weight + Height + Intervention_months_factor, data = data_scale, subset = data_scale$Gender == "Male",family = binomial)
-returnOT_fit_preF <- glm(formula = ReturnOpTijd ~ Age + Weight + Height + Intervention_months_factor, data = data_scale, subset = data_scale$Gender == "Female" & data_scale$PostMeno == 0,family = binomial)
-returnOT_fit_postF <- glm(formula = ReturnOpTijd ~ Age + Weight + Height + Intervention_months_factor, data = data_scale, subset = data_scale$Gender == "Female" & data_scale$PostMeno == 1,family = binomial)
+returnOT_fitM <- glm(formula = ReturnOpTijd ~ Age + Weight + Height + CalendarTime + Intervention_months_factor, data = data_scale, subset = data_scale$Gender == "Male",family = binomial)
+returnOT_fit_preF <- glm(formula = ReturnOpTijd ~ Age + Weight + Height + CalendarTime + Intervention_months_factor, data = data_scale, subset = data_scale$Gender == "Female" & data_scale$PostMeno == 0,family = binomial)
+returnOT_fit_postF <- glm(formula = ReturnOpTijd ~ Age + Weight + Height + CalendarTime + Intervention_months_factor, data = data_scale, subset = data_scale$Gender == "Female" & data_scale$PostMeno == 1,family = binomial)
 
 pl <- c(
   `(Intercept)` = "Intercept",
@@ -492,9 +493,9 @@ tab_model(returnOT_fit_preF, returnOT_fit_postF, returnOT_fitM, pred.labels = pl
 ### Donor return adjusted for COVID
 ```{r, message=F, error=F}
 #| label: log reg return on time including covid
-returnOT_fitM <- glm(formula = ReturnOpTijd ~ Age + Weight + Height + COVID + Intervention_months_factor, data = data_scale, subset = data_scale$Gender == "Male",family = binomial)
-returnOT_fit_preF <- glm(formula = ReturnOpTijd ~ Age + Weight + Height + COVID + Intervention_months_factor, data = data_scale, subset = data_scale$Gender == "Female" & data_scale$PostMeno == 0,family = binomial)
-returnOT_fit_postF <- glm(formula = ReturnOpTijd ~ Age + Weight + Height + COVID + Intervention_months_factor, data = data_scale, subset = data_scale$Gender == "Female" & data_scale$PostMeno == 1,family = binomial)
+returnOT_fitM <- glm(formula = ReturnOpTijd ~ Age + Weight + Height + COVID + CalendarTime + Intervention_months_factor, data = data_scale, subset = data_scale$Gender == "Male",family = binomial)
+returnOT_fit_preF <- glm(formula = ReturnOpTijd ~ Age + Weight + Height + COVID + CalendarTime + Intervention_months_factor, data = data_scale, subset = data_scale$Gender == "Female" & data_scale$PostMeno == 0,family = binomial)
+returnOT_fit_postF <- glm(formula = ReturnOpTijd ~ Age + Weight + Height + COVID + CalendarTime + Intervention_months_factor, data = data_scale, subset = data_scale$Gender == "Female" & data_scale$PostMeno == 1,family = binomial)
 
 pl <- c(
   `(Intercept)` = "Intercept",

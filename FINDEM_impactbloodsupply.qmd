@@ -24,14 +24,14 @@ pss2date <- function(x) as.Date(x/86400, origin = "1582-10-14")
 # Load data
 ```{r}
 #| label: load data donors
-y2015 <- read_sav("~/Amber/Data/FINDEM/DonorsTotaal/2015DonorsTotaal.sav") %>% mutate(Donor_Oproepbaar_Ind = case_when(Oproepbaar == "O"~1, Oproepbaar == "N" ~0), DonorstopCode = Donorstopcode, Donatie_Soort = DonatiesoortcodeDonor)%>% filter(Donatie_Soort == "V" | Donatie_Soort == "N")
-y2016 <- read_sav("~/Amber/Data/FINDEM/DonorsTotaal/2016DonorsTotaal.sav") %>% mutate(Donor_Oproepbaar_Ind = case_when(Oproepbaar == "O"~1, Oproepbaar == "N" ~0), DonorstopCode = Donorstopcode, Donatie_Soort = DonatiesoortcodeDonor)%>% filter(Donatie_Soort == "V" | Donatie_Soort == "N")
-y2017 <- read.csv("~/Amber/Data/FINDEM/DonorsTotaal/2017DonorsTotaal.csv", sep=";") %>% mutate(Invoerdatum = as.Date(Inschrijfdatum, format = "%m/%d/%Y"), Donatie_Soort = case_when(Donatie_Soort == "Volbloed" ~"V", Donatie_Soort == "Nieuwe donorkeuring" ~"N")) %>% filter(Donatie_Soort == "V" | Donatie_Soort == "N")
-y2018 <- read.csv("~/Amber/Data/FINDEM/DonorsTotaal/2018DonorsTotaal.csv", sep=";")%>% mutate(Invoerdatum = as.Date(Inschrijfdatum, format = "%m/%d/%Y"),Donatie_Soort = case_when(Donatie_Soort == "Volbloed" ~"V", Donatie_Soort == "Nieuwe donorkeuring" ~"N"))%>% filter(Donatie_Soort == "V" | Donatie_Soort == "N")
-y2019 <- read_sav("~/Amber/Data/FINDEM/DonorsTotaal/2019DonorsTotaal.sav")%>% mutate(Invoerdatum = as.Date(Inschrijfdatum, format = "%m/%d/%Y"),Donatie_Soort = case_when(Donatie_Soort == "Volbloed" ~"V", Donatie_Soort == "Nieuwe donorkeuring" ~"N"))%>% filter(Donatie_Soort == "V" | Donatie_Soort == "N")
-y2020 <- read_sav("~/Amber/Data/FINDEM/DonorsTotaal/2020DonorsTotaal.sav")%>% mutate(Invoerdatum = as.Date(Inschrijfdatum, format = "%m/%d/%Y"),Donatie_Soort = case_when(Donatie_Soort == "Volbloed" ~"V", Donatie_Soort == "Nieuwe donorkeuring" ~"N"))%>% filter(Donatie_Soort == "V" | Donatie_Soort == "N")
-y2021 <- read_sav("~/Amber/Data/FINDEM/DonorsTotaal/2021DonorsTotaal.sav")%>% mutate(Invoerdatum = as.Date(Inschrijfdatum, format = "%m/%d/%Y"),Donatie_Soort = case_when(Donatie_Soort == "Volbloed" ~"V", Donatie_Soort == "Nieuwe donorkeuring" ~"N"))%>% filter(Donatie_Soort == "V" | Donatie_Soort == "N")
-y2022 <- read_sav("~/Amber/Data/FINDEM/DonorsTotaal/2022DonorsTotaal.sav")%>% mutate(Invoerdatum = as.Date(Inschrijfdatum, format = "%m/%d/%Y"),Donatie_Soort = case_when(Donatie_Soort == "Volbloed" ~"V", Donatie_Soort == "Nieuwe donorkeuring" ~"N"))%>% filter(Donatie_Soort == "V" | Donatie_Soort == "N")
+y2015 <- read_sav("~/Amber/Data/FINDEM/DonorsTotaal/2015DonorsTotaal.sav") %>% mutate(Donor_Oproepbaar_Ind = case_when(Oproepbaar == "O"~1, Oproepbaar == "N" ~0), DonorstopCode = as.numeric(Donorstopcode), Donatie_Soort = DonatiesoortcodeDonor, stopped = case_when(DonorstopCode < 50 | DonorstopCode > 59~1, DonorstopCode >= 50 | DonorstopCode <= 59 ~0))%>% filter(Donatie_Soort == "V" | Donatie_Soort == "N")
+y2016 <- read_sav("~/Amber/Data/FINDEM/DonorsTotaal/2016DonorsTotaal.sav") %>% mutate(Donor_Oproepbaar_Ind = case_when(Oproepbaar == "O"~1, Oproepbaar == "N" ~0), DonorstopCode = Donorstopcode, Donatie_Soort = DonatiesoortcodeDonor, stopped = case_when(DonorstopCode < 50 | DonorstopCode > 59~1, DonorstopCode >= 50 | DonorstopCode <= 59 ~0))%>% filter(Donatie_Soort == "V" | Donatie_Soort == "N")
+y2017 <- read.csv("~/Amber/Data/FINDEM/DonorsTotaal/2017DonorsTotaal.csv", sep=";") %>% mutate(Invoerdatum = as.Date(Inschrijfdatum, format = "%m/%d/%Y"), Donatie_Soort = case_when(Donatie_Soort == "Volbloed" ~"V", Donatie_Soort == "Nieuwe donorkeuring" ~"N"),DonorstopCode = ifelse(DonorstopCode < 0,NA,DonorstopCode),stopped = case_when(DonorstopCode < 50 | DonorstopCode > 59~1, DonorstopCode >= 50 | DonorstopCode <= 59 ~0)) %>% filter(Donatie_Soort == "V" | Donatie_Soort == "N")
+y2018 <- read.csv("~/Amber/Data/FINDEM/DonorsTotaal/2018DonorsTotaal.csv", sep=";")%>% mutate(Invoerdatum = as.Date(Inschrijfdatum, format = "%m/%d/%Y"),Donatie_Soort = case_when(Donatie_Soort == "Volbloed" ~"V", Donatie_Soort == "Nieuwe donorkeuring" ~"N"),DonorstopCode = ifelse(DonorstopCode < 0,NA,DonorstopCode),stopped = case_when(DonorstopCode < 50 | DonorstopCode > 59~1, DonorstopCode >= 50 | DonorstopCode <= 59 ~0))%>% filter(Donatie_Soort == "V" | Donatie_Soort == "N")
+y2019 <- read_sav("~/Amber/Data/FINDEM/DonorsTotaal/2019DonorsTotaal.sav")%>% mutate(Invoerdatum = as.Date(Inschrijfdatum, format = "%m/%d/%Y"),Donatie_Soort = case_when(Donatie_Soort == "Volbloed" ~"V", Donatie_Soort == "Nieuwe donorkeuring" ~"N"),DonorstopCode = ifelse(DonorstopCode < 0,NA,DonorstopCode),stopped = case_when(DonorstopCode < 50 | DonorstopCode > 59~1, DonorstopCode >= 50 | DonorstopCode <= 59 ~0))%>% filter(Donatie_Soort == "V" | Donatie_Soort == "N")
+y2020 <- read_sav("~/Amber/Data/FINDEM/DonorsTotaal/2020DonorsTotaal.sav")%>% mutate(Invoerdatum = as.Date(Inschrijfdatum, format = "%m/%d/%Y"),Donatie_Soort = case_when(Donatie_Soort == "Volbloed" ~"V", Donatie_Soort == "Nieuwe donorkeuring" ~"N"),DonorstopCode = ifelse(DonorstopCode < 0,NA,DonorstopCode),stopped = case_when(DonorstopCode < 50 | DonorstopCode > 59~1, DonorstopCode >= 50 | DonorstopCode <= 59 ~0))%>% filter(Donatie_Soort == "V" | Donatie_Soort == "N")
+y2021 <- read_sav("~/Amber/Data/FINDEM/DonorsTotaal/2021DonorsTotaal.sav")%>% mutate(Invoerdatum = as.Date(Inschrijfdatum, format = "%m/%d/%Y"),Donatie_Soort = case_when(Donatie_Soort == "Volbloed" ~"V", Donatie_Soort == "Nieuwe donorkeuring" ~"N"),DonorstopCode = ifelse(DonorstopCode < 0,NA,DonorstopCode),stopped = case_when(DonorstopCode < 50 | DonorstopCode > 59~1, DonorstopCode >= 50 | DonorstopCode <= 59 ~0))%>% filter(Donatie_Soort == "V" | Donatie_Soort == "N")
+y2022 <- read_sav("~/Amber/Data/FINDEM/DonorsTotaal/2022DonorsTotaal.sav")%>% mutate(Invoerdatum = as.Date(Inschrijfdatum, format = "%m/%d/%Y"),Donatie_Soort = case_when(Donatie_Soort == "Volbloed" ~"V", Donatie_Soort == "Nieuwe donorkeuring" ~"N"),DonorstopCode = ifelse(DonorstopCode < 0,NA,DonorstopCode),stopped = case_when(DonorstopCode < 50 | DonorstopCode > 59~1, DonorstopCode >= 50 | DonorstopCode <= 59 ~0))%>% filter(Donatie_Soort == "V" | Donatie_Soort == "N")
 ```
 
 ```{r}
@@ -56,7 +56,6 @@ d2019 <-read_sav("~/Amber/Data/FINDEM/Afkeur/2019DonorAfkeur.sav")%>% mutate(una
 d2020 <-read_sav("~/Amber/Data/FINDEM/Afkeur/2020DonorAfkeur.sav")%>% mutate(unav = ifelse((Donorafkeurcode == 6010 | Donorafkeurcode == 6011 | Donorafkeurcode == 6012) & TotDatum >= "2020-12-31",1,0))
 d2021 <- read_sav("~/Amber/Data/FINDEM/Afkeur/2021DonorAfkeur.sav") %>% mutate(FerAfkeur = ifelse(Donorafkeurcode == 6010 | Donorafkeurcode == 6011 | Donorafkeurcode == 6012, 1, 0),  HbAfkeur = ifelse(Donorafkeurcode == 2304 | Donorafkeurcode == 2307 | Donorafkeurcode == 7305, 1, 0), JaarVanaf = as.numeric(format(as.Date(VanafDatum, format="%Y-%m-%d"),"%Y")))%>% mutate(unav = ifelse((Donorafkeurcode == 6010 | Donorafkeurcode == 6011 | Donorafkeurcode == 6012) & TotDatum >= "2021-12-31",1,0))
 d2022 <- read_sav("~/Amber/Data/FINDEM/Afkeur/2022DonorAfkeur.sav") %>% mutate(VanafDatum = as.Date(VanafDatum,format="%Y-%m-%d"),TotDatum=as.Date(TotDatum, format="%Y-%m-%d"),FerAfkeur = ifelse(Donorafkeurcode == 6010 | Donorafkeurcode == 6011 | Donorafkeurcode == 6012, 1, 0),  HbAfkeur = ifelse(Donorafkeurcode == 2304 | Donorafkeurcode == 2307 | Donorafkeurcode == 7305, 1, 0), JaarVanaf = as.numeric(format(as.Date(VanafDatum, format="%Y-%m-%d"),"%Y")))%>% mutate(unav = ifelse((Donorafkeurcode == 6010 | Donorafkeurcode == 6011 | Donorafkeurcode == 6012) & TotDatum >= "2022-12-31",1,0))
-
 ```
 
 ```{r}
@@ -94,8 +93,8 @@ for(i in 2:(length(years)-1)){
   overview[,3]<-donornr
   #Number of new donor examinations
   eval(parse(text=paste0("overview[i-1,4]<-sum(y",years[i],"$Invoerdatum > \"",years[i-1],"-12-31\", na.rm=T)")))
-  #Number of lapsed donors
-  eval(parse(text=paste0("overview[i-1,5]<-(nrow(y",years[i],")-sum(is.na(y",years[i],"$DonorstopCode)|y", years[i], "$DonorstopCode<0))-(nrow(y",years[i-1],")-sum(is.na(y",years[i-1],"$DonorstopCode)|y", years[i-1], "$DonorstopCode<0))")))
+  #Stopped donors
+  eval(parse(text=paste0("overview[i-1,5]<-sum(y", years[i], "$stopped, na.rm=T)-sum(y",years[i-1],"$stopped, na.rm=T)")))
   #Available donors
   eval(parse(text=paste0("overview[i-1,6]<-sum(y",years[i],"$Donor_Oproepbaar_Ind==1, na.rm=T)")))
   #Unavailable donors due to low ferritin
@@ -127,5 +126,27 @@ overview2 <- as.data.frame(t(overview))
 overview2 <- cbind(names, overview2)
 saveRDS(overview2, file = "~/Amber/FINDEM/results/impactbloodsupply.rds")
 write_xlsx(overview2, "~/Amber/FINDEM/results/impactbloodsupply.xlsx")
+```
+
+```{r}
+donaties <- readRDS("~/Amber/Data/Algemeen/alledonaties_2008_2023.rds")
+donaties <- donaties %>% filter(Donatiedatum > "2016-01-01") %>% arrange(KeyID, Donatiedatum)
+
+#create pointer for next donation
+idx<-1:nrow(donaties)
+precursor<-idx+1
+precursor[nrow(donaties)]<-1
+
+# calculate time since last donation
+donaties$dt<-NA
+donaties$dt<-as.numeric(donaties$Donatiedatum[precursor]-donaties$Donatiedatum)
+
+#stopped?
+donaties$stopped <- 0
+donaties$stopped[donaties$dt > (2*365)] <- 1
+
+#donaties <- donaties %>% filter(Donatiedatum < "2022-01-01")
+
+stoppeddonors <- donaties %>% group_by(JaarDonatie) %>% summarise(sum_stopped = sum(stopped))
 ```
 
