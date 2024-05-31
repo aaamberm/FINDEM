@@ -93,7 +93,7 @@ Description of the general donor population:
 #variables we have to make are: total number of donations, donations in the past 2 years, return(?)
 pss2date <- function(x) as.Date(x/86400, origin = "1582-10-14") 
 
-donaties <- readRDS("~/Amber/Data/Algemeen/alledonaties_2008_2022.rds") 
+donaties <- readRDS("~/Amber/Data/Algemeen/alledonaties_2008_2022_old.rds") 
 donaties <- donaties %>% mutate(Donatiedatum = pss2date(Donatiedatum), record = 1) %>% filter(Donatiesoortcode == "Volbloed"|Donatiesoortcode=="Nieuwe donorkeuring")%>% arrange(Donatiedatum) %>% group_by(KeyID) %>% mutate(TotaalOpBaseline=sum(record)) %>% select(-record)
 
 #test from other script
@@ -336,7 +336,7 @@ load_models <- function(model){
 order <- rev(c("Intervention_months_factor1", "Intervention_months_factor2", "Intervention_months_factor3", "Intervention_months_factor4", "Intervention_months_factor5", "Intervention_months_factor6"))
 
 datalist <- lapply(models, load_models)
-data.forestplot <- bind_rows(datalist) %>% mutate(term = ordered(term, levels = order)) %>% mutate(sex = dplyr::recode(sex, "M" = "Males", "postF" = "Postmenopausal\nfemales", "preF" = "Premenopausal\nfemales"), sex = ordered(sex, levels = c("Premenopausal\nfemales", "Postmenopausal\nfemales", "Males")), outcome = dplyr::recode(outcome, "ferritin" = "Ferritin", "hb" = "Hemoglobin", "hbdef" = "Hb based \ndeferral", "ID" = "Iron \ndeficiency"),  significant = as.factor(ifelse(p.value <= (0.05/4), 1, 0)), significant = ordered(significant, levels = c("1", "0")))
+data.forestplot <- bind_rows(datalist) %>% mutate(term = ordered(term, levels = order)) %>% mutate(sex = dplyr::recode(sex, "M" = "Males", "postF" = "Postmenopausal\nfemales", "preF" = "Premenopausal\nfemales"), sex = ordered(sex, levels = c("Premenopausal\nfemales", "Postmenopausal\nfemales", "Males")), outcome = dplyr::recode(outcome, "ferritin" = "Ferritin", "hb" = "Hemoglobin", "hbdef" = "Hb based \ndeferral", "ID" = "Iron \ndeficiency"),outcome = ordered(outcome, levels = c("Ferritin", "Hemoglobin", "Iron \ndeficiency", "Hb based \ndeferral")),  significant = as.factor(ifelse(p.value <= (0.05/4), 1, 0)), significant = ordered(significant, levels = c("1", "0")))
 
 p1 <- ggplot(data.forestplot[data.forestplot$outcome=="Ferritin" | data.forestplot$outcome == "Hemoglobin",], aes(x=term, y=estimate, shape = significant)) +
          geom_errorbar(aes(ymin=conf.low, ymax=conf.high), 
@@ -348,7 +348,7 @@ p1 <- ggplot(data.forestplot[data.forestplot$outcome=="Ferritin" | data.forestpl
   geom_point() + coord_flip() + scale_x_discrete(breaks = c("Intervention_months_factor1", "Intervention_months_factor2", "Intervention_months_factor3", "Intervention_months_factor4", "Intervention_months_factor5", "Intervention_months_factor6"),
                            labels = c("6-11", "12-17", "18-23", "24-29", "30-35", "36+")) + ylab("Regression coefficient") + facet_grid(outcome~sex) + theme(legend.position = "none",axis.title.y=element_blank())
 
-p2 <- ggplot(data.forestplot[data.forestplot$outcome=="Iron \ndeficiency" | data.forestplot$outcome == "Hb based \ndeferral" | data.forestplot$outcome == "Return",], aes(x=term, y=estimate, shape = significant)) +
+p2 <- ggplot(data.forestplot[data.forestplot$outcome=="Iron \ndeficiency" | data.forestplot$outcome == "Hb based \ndeferral",], aes(x=term, y=estimate, shape = significant)) +
          geom_errorbar(aes(ymin=conf.low, ymax=conf.high), 
                        width = 0.2,size  = 0.5,
                        position = "dodge", color="#1cdbfc") +
@@ -449,14 +449,14 @@ load_models_Q <- function(model){
 order <- rev(c("Intervention_months_factor1", "Intervention_months_factor2", "Intervention_months_factor3", "Intervention_months_factor4", "Intervention_months_factor5", "Intervention_months_factor6"))
 
 datalist <- lapply(modelsQ, load_models_Q)
-data.forestplot <- bind_rows(datalist) %>% mutate(term = ordered(term, levels = order)) %>% mutate(sex = dplyr::recode(sex, "M" = "Male", "postF" = "Postmenopausal\nfemales", "preF" = "Premenopausal\nfemales"), outcome = dplyr::recode(outcome, "WG" = "Warm\nglow", "PICA" = "Pica", "RLS" = "Restless \nlegs syn-\ndrome", "CFQ" = "Cognitive \nfuncti- \noning", "CIS" = "Fatigue", "SFph" = "Physical \nhealth", "SFmh"="Mental\nhealth", "returnOT" = "Return"), outcome = ordered(outcome, levels = c("Return", "Warm\nglow", "Pica", "Restless \nlegs syn-\ndrome","Cognitive \nfuncti- \noning", "Fatigue", "Physical \nhealth", "Mental\nhealth")), significant = as.factor(ifelse(p.value <= 0.05, 1, 0)), significant = ordered(significant, levels = c("1", "0"))) %>% mutate(low_l = ifelse(conf.low < -2, -1.8, NA), high_l = ifelse(conf.high > 2, 1.8, NA))
+data.forestplot <- bind_rows(datalist) %>% mutate(term = ordered(term, levels = order)) %>% mutate(sex = dplyr::recode(sex, "M" = "Males", "postF" = "Postmenopausal\nfemales", "preF" = "Premenopausal\nfemales"), sex = ordered(sex, levels = c("Premenopausal\nfemales", "Postmenopausal\nfemales", "Males")), outcome = dplyr::recode(outcome, "WG" = "Warm\nglow", "PICA" = "Pica", "RLS" = "Restless \nlegs syn-\ndrome", "CFQ" = "Cognitive \nfuncti- \noning", "CIS" = "Fatigue", "SFph" = "Physical \nhealth", "SFmh"="Mental\nhealth", "returnOT" = "Return"), outcome = ordered(outcome, levels = c("Return", "Warm\nglow", "Pica", "Restless \nlegs syn-\ndrome","Cognitive \nfuncti- \noning", "Fatigue", "Physical \nhealth", "Mental\nhealth")), significant = as.factor(ifelse(p.value <= 0.05, 1, 0)), significant = ordered(significant, levels = c("1", "0"))) %>% mutate(low_l = ifelse(conf.low < -2, -1.8, NA), high_l = ifelse(conf.high > 2, 1.8, NA))
 
 p1Q <- ggplot(data.forestplot[data.forestplot$outcome=="Cognitive \nfuncti- \noning" | data.forestplot$outcome == "Fatigue" | data.forestplot$outcome == "Physical \nhealth" | data.forestplot$outcome=="Mental\nhealth",], aes(x=term, y=estimate, shape = significant)) +
          geom_errorbar(aes(ymin=conf.low, ymax=conf.high), 
                        width = 0.2,size  = 0.5,
                        position = "dodge", color="#1cdbfc") +
   geom_hline(yintercept = 0, color = "#ff9700", linewidth = 0.35) +
-  scale_shape_manual(values = c(1, 16)) +
+  scale_shape_manual(values = c(16, 1)) +
   geom_point() + coord_flip() + scale_x_discrete(breaks = c("Intervention_months_factor1", "Intervention_months_factor2", "Intervention_months_factor3", "Intervention_months_factor4"),
                            labels = c("6-11", "12-17", "18-23", "24-29")) + ylab("Regression coefficient") + facet_grid(outcome~sex) + theme(legend.position = "none",axis.title.y=element_blank(), axis.text.x = element_text(size=6))
 
